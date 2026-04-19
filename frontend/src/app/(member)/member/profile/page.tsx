@@ -2,29 +2,122 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 import AnimatedInput from "@/components/ui/AnimatedInput";
 import PageWrapper from "@/components/ui/PageWrapper";
+import { getMe, updateProfile } from "@/services/authService";
+import type { User } from "@/services/authService";
 
 const allSkills = ["Leadership", "Communication", "Design", "Programming", "Marketing", "Event Planning", "Photography", "Writing"];
 
+function getInitials(user: User | null): string {
+  if (!user) return "??";
+  return `${user.first_name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase();
+}
+
 export default function MemberProfile() {
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(["Leadership", "Communication", "Design"]);
-  const [dragOver, setDragOver] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
-  const [showToast, setShowToast] = useState(false);
+  const [user,          setUser]          = useState<User | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [showToast,     setShowToast]     = useState(false);
+  const [dragOver,      setDragOver]      = useState(false);
+  const [uploadedFile,  setUploadedFile]  = useState<string | null>(null);
+
+  // Form fields
+  const [firstName,   setFirstName]   = useState("");
+  const [lastName,    setLastName]    = useState("");
+  const [phone,       setPhone]       = useState("");
+  const [city,        setCity]        = useState("");
+  const [country,     setCountry]     = useState("");
+  const [education,   setEducation]   = useState("");
+  const [bio,         setBio]         = useState("");
+  const [experience,  setExperience]  = useState("");
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+
+  // ── Load real user data on mount ──────────────────────────────
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const data = await getMe();
+        setUser(data);
+        setFirstName(data.first_name   || "");
+        setLastName(data.last_name     || "");
+        setPhone(data.phone            || "");
+        setCity(data.city              || "");
+        setCountry(data.country        || "");
+        setEducation(data.education    || "");
+        setBio(data.bio                || "");
+        setExperience(data.experience  || "");
+        setSelectedSkills(data.skills  || []);
+      } catch {
+        setError("Failed to load profile. Please refresh.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUser();
+  }, []);
 
   const toggleSkill = (skill: string) =>
-    setSelectedSkills((prev) => prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]);
+    setSelectedSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
 
-  const handleSave = () => {
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
+  // ── Save profile ───────────────────────────────────────────────
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateProfile({
+        first_name: firstName,
+        last_name:  lastName,
+        phone,
+        city,
+        country,
+        education,
+        bio,
+        experience,
+        skills: selectedSkills,
+      });
+      setUser(updated);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch {
+      setError("Failed to save profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Discard — reset to current saved values ────────────────────
+  function handleDiscard() {
+    if (!user) return;
+    setFirstName(user.first_name  || "");
+    setLastName(user.last_name    || "");
+    setPhone(user.phone           || "");
+    setCity(user.city             || "");
+    setCountry(user.country       || "");
+    setEducation(user.education   || "");
+    setBio(user.bio               || "");
+    setExperience(user.experience || "");
+    setSelectedSkills(user.skills || []);
+  }
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+          <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading profile...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
+
       {/* Success Toast */}
       <AnimatePresence>
         {showToast && (
@@ -52,47 +145,110 @@ export default function MemberProfile() {
       </AnimatePresence>
 
       <div style={{ maxWidth: "680px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <h1 style={{ fontSize: "1.875rem", fontWeight: "800", color: "#0d0b08" }}>Profile & Settings</h1>
           <p style={{ color: "#6b7280", marginTop: "4px", marginBottom: "32px" }}>Manage your account and match with the right opportunities.</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
+        {/* Error banner */}
+        {error && (
+          <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "12px 16px", color: "#dc2626", fontSize: "0.875rem", marginBottom: "16px" }}>
+            {error}
+          </div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
           style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", border: "1px solid #f0f0f0", display: "flex", flexDirection: "column", gap: "28px" }}
         >
+
           {/* Avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <motion.div whileHover={{ scale: 1.05 }}
-              style={{ height: "80px", width: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "800", color: "#ffffff", flexShrink: 0, cursor: "pointer", border: "3px solid #e0f2ee" }}>
-              AK
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              style={{ height: "80px", width: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "800", color: "#ffffff", flexShrink: 0, cursor: "pointer", border: "3px solid #e0f2ee" }}
+            >
+              {getInitials(user)}
             </motion.div>
             <div>
+              <p style={{ fontSize: "1rem", fontWeight: "700", color: "#0d0b08" }}>{user?.full_name}</p>
+              <p style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: "8px" }}>{user?.email}</p>
               <AnimatedButton variant="outline" style={{ padding: "8px 16px", fontSize: "0.875rem", borderRadius: "10px" }}>Change Photo</AnimatedButton>
               <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "6px" }}>JPG, PNG. Max 2MB.</p>
             </div>
           </div>
 
-          {/* Name + Phone */}
+          {/* First + Last Name */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <AnimatedInput label="Full Name" defaultValue="Ahmad Khalil" placeholder="Your full name" />
-            <AnimatedInput label="Phone" placeholder="+970 5X XXX XXXX" />
+            <AnimatedInput
+              label="First Name"
+              value={firstName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+              placeholder="First name"
+            />
+            <AnimatedInput
+              label="Last Name"
+              value={lastName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
+              placeholder="Last name"
+            />
+          </div>
+
+          {/* Phone — read-only email */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <AnimatedInput
+              label="Phone"
+              value={phone}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+              placeholder="+970 5X XXX XXXX"
+            />
+            <div>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Email</label>
+              <input
+                value={user?.email || ""}
+                disabled
+                style={{ width: "100%", padding: "12px 16px", border: "1px solid #e5e7eb", borderRadius: "12px", fontSize: "0.875rem", backgroundColor: "#f9fafb", color: "#9ca3af", boxSizing: "border-box" }}
+              />
+            </div>
           </div>
 
           {/* City + Country */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <AnimatedInput label="City" placeholder="e.g. Nablus" />
-            <AnimatedInput label="Country" placeholder="e.g. Palestine" />
+            <AnimatedInput
+              label="City"
+              value={city}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
+              placeholder="e.g. Nablus"
+            />
+            <AnimatedInput
+              label="Country"
+              value={country}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
+              placeholder="e.g. Palestine"
+            />
           </div>
 
-          <AnimatedInput label="Education" placeholder="e.g. BSc Computer Science, An-Najah University" />
+          {/* Education */}
+          <AnimatedInput
+            label="Education"
+            value={education}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEducation(e.target.value)}
+            placeholder="e.g. BSc Computer Science, An-Najah University"
+          />
 
           {/* Bio */}
           <div>
             <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Bio</label>
-            <textarea placeholder="A short introduction about yourself..." rows={3}
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="A short introduction about yourself..."
+              rows={3}
               style={{ width: "100%", padding: "12px 16px", border: "1px solid #d1d5db", borderRadius: "12px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
               onFocus={(e) => { e.target.style.borderColor = "#2e8673"; e.target.style.boxShadow = "0 0 0 3px rgba(46,134,115,0.1)"; }}
-              onBlur={(e) => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }} />
+              onBlur={(e)  => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
+            />
           </div>
 
           {/* Skills */}
@@ -102,7 +258,8 @@ export default function MemberProfile() {
               {allSkills.map((skill, i) => {
                 const selected = selectedSkills.includes(skill);
                 return (
-                  <motion.button key={skill}
+                  <motion.button
+                    key={skill}
                     initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 + i * 0.04 }}
                     whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                     onClick={() => toggleSkill(skill)}
@@ -120,16 +277,23 @@ export default function MemberProfile() {
                 );
               })}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "8px" }}>{selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected</p>
+            <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "8px" }}>
+              {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected
+            </p>
           </div>
 
           {/* Experience */}
           <div>
             <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Experience</label>
-            <textarea placeholder="Brief summary of your relevant experience..." rows={3}
+            <textarea
+              value={experience}
+              onChange={(e) => setExperience(e.target.value)}
+              placeholder="Brief summary of your relevant experience..."
+              rows={3}
               style={{ width: "100%", padding: "12px 16px", border: "1px solid #d1d5db", borderRadius: "12px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
               onFocus={(e) => { e.target.style.borderColor = "#2e8673"; e.target.style.boxShadow = "0 0 0 3px rgba(46,134,115,0.1)"; }}
-              onBlur={(e) => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }} />
+              onBlur={(e)  => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
+            />
           </div>
 
           {/* CV Upload */}
@@ -166,9 +330,24 @@ export default function MemberProfile() {
 
           {/* Actions */}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "8px", borderTop: "1px solid #f0f0f0" }}>
-            <AnimatedButton variant="outline" style={{ padding: "11px 24px", fontSize: "0.95rem", borderRadius: "12px" }}>Discard</AnimatedButton>
-            <AnimatedButton variant="primary" onClick={handleSave} style={{ padding: "11px 28px", fontSize: "0.95rem", borderRadius: "12px" }}>Save Profile</AnimatedButton>
+            <AnimatedButton
+              variant="outline"
+              onClick={handleDiscard}
+              disabled={saving}
+              style={{ padding: "11px 24px", fontSize: "0.95rem", borderRadius: "12px" }}
+            >
+              Discard
+            </AnimatedButton>
+            <AnimatedButton
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ padding: "11px 28px", fontSize: "0.95rem", borderRadius: "12px" }}
+            >
+              {saving ? "Saving..." : "Save Profile"}
+            </AnimatedButton>
           </div>
+
         </motion.div>
       </div>
     </PageWrapper>

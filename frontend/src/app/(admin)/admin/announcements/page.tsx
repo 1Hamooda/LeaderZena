@@ -73,7 +73,7 @@ export default function AdminAnnouncements() {
             <tbody>
               {announcements.map((a, i) => (
                 <motion.tr key={a.id} custom={i} initial="hidden" animate="visible" variants={fadeUp}
-                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  whileHover={{ backgroundColor: "#e9e2e2" }}
                   style={{ borderBottom: "1px solid #f5f5f5", transition: "background-color 0.15s" }}
                 >
                   <td style={{ padding: "14px 16px", fontWeight: "600", fontSize: "0.875rem", color: "#0d0b08" }}>{a.title}</td>

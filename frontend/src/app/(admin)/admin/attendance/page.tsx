@@ -97,7 +97,7 @@ export default function AdminAttendance() {
               <tbody>
                 {checkins.map((c, i) => (
                   <motion.tr key={i} custom={i} initial="hidden" animate="visible" variants={fadeUp}
-                    whileHover={{ backgroundColor: "#f9fafb" }}
+                    whileHover={{ backgroundColor: "#e9e2e2" }}
                     style={{ borderBottom: "1px solid #f5f5f5", transition: "background-color 0.15s" }}
                   >
                     <td style={{ padding: "12px 0", fontWeight: "600", fontSize: "0.875rem", color: "#0d0b08" }}>{c.name}</td>
