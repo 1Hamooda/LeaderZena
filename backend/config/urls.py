@@ -9,6 +9,8 @@ urlpatterns = [
     path("api/notifications/",  include("apps.notifications.urls")),
     path("api/points/",         include("apps.points.urls")),
     path("api/certificates/",   include("apps.certificates.urls")),
+    path("api/cv/",             include("apps.cv.urls")),
+    path("api/analytics/",      include("apps.analytics.urls")),
+    path("api/announcements/",  include("apps.announcements.urls")),
 ]
-
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
