@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, CheckCircle, Clock, Award, ArrowRight, Bell } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Award, ArrowRight, Bell, Download, Eye, X } from "lucide-react";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 import PageWrapper from "@/components/ui/PageWrapper";
 import { getMe } from "@/services/authService";
@@ -18,13 +18,14 @@ const fadeUp = {
   }),
 };
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface Certificate {
-  id:          number;
-  uuid:        string;
-  event_title: string;
-  event_date:  string;
-  status:      string;
-  issued_at:   string;
+  id:           number;
+  uuid:         string;
+  event_title:  string;
+  issued_at:    string;
+  status:       string;
   download_url: string;
 }
 
@@ -53,38 +54,81 @@ export default function VolunteerDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,   setUnreadCount]   = useState(0);
   const [loading,       setLoading]       = useState(true);
+  const [previewCert,   setPreviewCert]   = useState<Certificate | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadAll() {
-      try {
-        const [userData, certsData, notifsData] = await Promise.all([
-          getMe(),
-          api.get("/api/certificates/"),
-          api.get("/api/notifications/"),
-        ]);
-        setUser(userData);
-        setCertificates(certsData.data);
-        setNotifications(notifsData.data.results.slice(0, 3));
-        setUnreadCount(notifsData.data.results.filter((n: Notification) => !n.is_read).length);
-      } catch {
-        // fail silently
-      } finally {
-        setLoading(false);
-      }
+  if (!previewCert) {
+    if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
+    return;
+  }
+  async function loadBlob() {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${API_BASE}/api/certificates/${previewCert!.uuid}/view/`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      const blob = await res.blob();
+      setBlobUrl(URL.createObjectURL(blob));
+    } catch {
+      setBlobUrl(null);
     }
-    loadAll();
-  }, []);
+  }
+  loadBlob();
+}, [previewCert]);
 
   const stats = [
-    { icon: Calendar,    label: "Events Volunteered", value: "—",                change: null },
-    { icon: Clock,       label: "Hours Contributed",  value: "—",                change: null },
-    { icon: Award,       label: "Certificates",       value: certificates.length, change: null },
-    { icon: Bell,        label: "Notifications",      value: unreadCount,         change: unreadCount > 0 ? `${unreadCount} unread` : null },
+    { icon: Calendar, label: "Events Volunteered", value: "—",                change: null },
+    { icon: Clock,    label: "Hours Contributed",  value: "—",                change: null },
+    { icon: Award,    label: "Certificates",       value: certificates.length, change: null },
+    { icon: Bell,     label: "Notifications",      value: unreadCount,         change: unreadCount > 0 ? `${unreadCount} unread` : null },
   ];
 
   return (
     <PageWrapper>
       <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+
+        {/* Certificate Preview Modal */}
+        {previewCert && (
+          <div
+            onClick={() => setPreviewCert(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 50, backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ backgroundColor: "#ffffff", borderRadius: "20px", width: "100%", maxWidth: "940px", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "1px solid #f0f0f0", flexShrink: 0 }}>
+                <div>
+                  <p style={{ fontSize: "0.7rem", color: "#9ca3af", fontWeight: "600", letterSpacing: "0.06em" }}>CERTIFICATE PREVIEW</p>
+                  <p style={{ fontSize: "1rem", fontWeight: "700", color: "#0d0b08", marginTop: "2px" }}>{previewCert.event_title}</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <a
+                    href={`${API_BASE}/api/certificates/${previewCert.uuid}/download/`}
+                    download
+                    style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#2e8673", color: "#ffffff", fontSize: "0.8rem", fontWeight: "700", padding: "8px 14px", borderRadius: "10px", textDecoration: "none" }}
+                  >
+                    <Download size={13} /> Download
+                  </a>
+                  <button
+                    onClick={() => setPreviewCert(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px", display: "flex" }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              <iframe
+                src={`${API_BASE}/api/certificates/${previewCert.uuid}/view/`}
+                style={{ width: "100%", height: "620px", border: "none", backgroundColor: "#f3f4f6" }}
+                title={`Certificate — ${previewCert.event_title}`}
+              />
+            </motion.div>
+          </div>
+        )}
 
         {/* Welcome Header */}
         <motion.div
@@ -152,18 +196,26 @@ export default function VolunteerDashboard() {
                     whileHover={{ x: 4, backgroundColor: "#f0f9f7" }}
                     style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: "12px", backgroundColor: "#f9fafb", transition: "background-color 0.2s" }}
                   >
-                    <div>
-                      <p style={{ fontWeight: "600", fontSize: "0.875rem", color: "#0d0b08" }}>{cert.event_title}</p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: "600", fontSize: "0.875rem", color: "#0d0b08", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cert.event_title}</p>
                       <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "2px" }}>{timeAgo(cert.issued_at)}</p>
                     </div>
-                    <a
-                      href={`http://localhost:8000${cert.download_url}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ backgroundColor: "#f0f9f7", color: "#2e8673", fontWeight: "700", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "20px", textDecoration: "none" }}
-                    >
-                      Download
-                    </a>
+                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={() => setPreviewCert(cert)}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#f0f9f7", color: "#2e8673", fontWeight: "700", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "20px", border: "none", cursor: "pointer" }}
+                      >
+                        <Eye size={12} /> Preview
+                      </motion.button>
+                      <a
+                        href={`${API_BASE}/api/certificates/${cert.uuid}/download/`}
+                        download
+                        style={{ display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#0d0b08", color: "#ffffff", fontWeight: "700", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "20px", textDecoration: "none" }}
+                      >
+                        <Download size={12} /> Download
+                      </a>
+                    </div>
                   </motion.div>
                 ))}
               </div>

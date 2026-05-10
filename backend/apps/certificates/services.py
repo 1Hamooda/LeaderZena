@@ -19,17 +19,13 @@ def issue_certificate(user, event, issued_by=None):
     return certificate, created
 
 
-def revoke_certificate(user, event):
+def revoke_certificate(cert):
     """
-    Revoke a certificate for a user/event pair.
+    Revoke a certificate by cert object.
     """
-    try:
-        cert = Certificate.objects.get(user=user, event=event)
-        cert.status = "revoked"
-        cert.save()
-        return cert
-    except Certificate.DoesNotExist:
-        return None
+    cert.status = "revoked"
+    cert.save()
+    return cert
 
 
 def issue_certificates_for_event(event, issued_by=None):
