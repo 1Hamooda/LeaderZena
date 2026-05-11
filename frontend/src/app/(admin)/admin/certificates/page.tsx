@@ -26,6 +26,20 @@ interface Certificate {
   issued_at:      string;
 }
 
+interface Event {
+  id:    number;
+  title: string;
+  date:  string;
+  emoji: string;
+}
+
+interface User {
+  id:        number;
+  full_name: string;
+  email:     string;
+  role:      string;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function formatDate(dateStr: string): string {
@@ -40,7 +54,7 @@ const modalOverlay: React.CSSProperties = {
 
 const modalBox: React.CSSProperties = {
   backgroundColor: "#ffffff", borderRadius: "20px",
-  padding: "32px", width: "100%", maxWidth: "420px",
+  padding: "32px", width: "100%", maxWidth: "440px",
   boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
 };
 
@@ -53,11 +67,18 @@ export default function AdminCertificates() {
   const [eventFilter,   setEventFilter]   = useState("");
   const [statusFilter,  setStatusFilter]  = useState("");
 
+  // Events + users for dropdowns
+  const [events,       setEvents]       = useState<Event[]>([]);
+  const [users,        setUsers]        = useState<User[]>([]);
+  const [dropLoading,  setDropLoading]  = useState(false);
+
+  // Issue single modal
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [issueUserId,    setIssueUserId]    = useState("");
   const [issueEventId,   setIssueEventId]   = useState("");
   const [issueLoading,   setIssueLoading]   = useState(false);
 
+  // Bulk modal
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkEventId,   setBulkEventId]   = useState("");
   const [bulkLoading,   setBulkLoading]   = useState(false);
@@ -87,15 +108,48 @@ export default function AdminCertificates() {
 
   useEffect(() => { fetchCertificates(); }, [statusFilter, eventFilter]);
 
+  // Load events + users when opening either modal
+  async function loadDropdownData() {
+    if (events.length > 0) return; // already loaded
+    setDropLoading(true);
+    try {
+      const [eventsRes, usersRes] = await Promise.all([
+        api.get("/api/events/admin/"),
+        api.get("/api/auth/admin/users/"),
+      ]);
+      setEvents(eventsRes.data.results);
+      setUsers(usersRes.data.results);
+    } catch {
+      showToast("Failed to load events/users.");
+    } finally {
+      setDropLoading(false);
+    }
+  }
+
+  async function openIssueModal() {
+    setIssueUserId("");
+    setIssueEventId("");
+    setShowIssueModal(true);
+    await loadDropdownData();
+  }
+
+  async function openBulkModal() {
+    setBulkEventId("");
+    setShowBulkModal(true);
+    await loadDropdownData();
+  }
+
   async function handleIssueSingle() {
-    if (!issueUserId || !issueEventId) { showToast("Please enter both User ID and Event ID."); return; }
+    if (!issueUserId || !issueEventId) { showToast("Please select both a user and an event."); return; }
     setIssueLoading(true);
     try {
       const { data } = await api.post("/api/certificates/admin/issue/", {
-        user_id: parseInt(issueUserId), event_id: parseInt(issueEventId),
+        user_id:  parseInt(issueUserId),
+        event_id: parseInt(issueEventId),
       });
       showToast(data.message);
-      setShowIssueModal(false); setIssueUserId(""); setIssueEventId("");
+      setShowIssueModal(false);
+      setIssueUserId(""); setIssueEventId("");
       fetchCertificates();
     } catch (err: any) {
       showToast(err?.response?.data?.error || "Failed to issue certificate.");
@@ -103,7 +157,7 @@ export default function AdminCertificates() {
   }
 
   async function handleBulkIssue() {
-    if (!bulkEventId) { showToast("Please enter an Event ID."); return; }
+    if (!bulkEventId) { showToast("Please select an event."); return; }
     setBulkLoading(true);
     try {
       const { data } = await api.post("/api/certificates/admin/issue-bulk/", {
@@ -126,6 +180,14 @@ export default function AdminCertificates() {
     finally { setActionLoading(null); }
   }
 
+  const selectStyle: React.CSSProperties = {
+    width: "100%", padding: "10px 14px",
+    border: "1px solid #d1d5db", borderRadius: "10px",
+    fontSize: "0.875rem", outline: "none",
+    backgroundColor: "#ffffff", boxSizing: "border-box",
+    cursor: "pointer",
+  };
+
   return (
     <PageWrapper>
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -147,22 +209,46 @@ export default function AdminCertificates() {
                 <button onClick={() => setShowIssueModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>User ID</label>
-                  <input type="number" value={issueUserId} onChange={(e) => setIssueUserId(e.target.value)} placeholder="e.g. 5"
-                    style={{ width: "100%", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => (e.target.style.borderColor = "#2e8673")} onBlur={(e) => (e.target.style.borderColor = "#d1d5db")} />
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>Event ID</label>
-                  <input type="number" value={issueEventId} onChange={(e) => setIssueEventId(e.target.value)} placeholder="e.g. 3"
-                    style={{ width: "100%", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => (e.target.style.borderColor = "#2e8673")} onBlur={(e) => (e.target.style.borderColor = "#d1d5db")} />
-                </div>
-                <p style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Will be replaced with dropdowns once the events app is ready.</p>
+
+                {dropLoading ? (
+                  <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "12px 0" }}>Loading...</p>
+                ) : (
+                  <>
+                    {/* User dropdown */}
+                    <div>
+                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
+                        Recipient
+                      </label>
+                      <select value={issueUserId} onChange={(e) => setIssueUserId(e.target.value)} style={selectStyle}>
+                        <option value="">Select a user...</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={String(u.id)}>
+                            {u.full_name} ({u.email}) — {u.role}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Event dropdown */}
+                    <div>
+                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
+                        Event
+                      </label>
+                      <select value={issueEventId} onChange={(e) => setIssueEventId(e.target.value)} style={selectStyle}>
+                        <option value="">Select an event...</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={String(ev.id)}>
+                            {ev.emoji} {ev.title} — {formatDate(ev.date)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
                 <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
                   <AnimatedButton variant="outline" onClick={() => setShowIssueModal(false)} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>Cancel</AnimatedButton>
-                  <AnimatedButton variant="primary" onClick={handleIssueSingle} disabled={issueLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
+                  <AnimatedButton variant="primary" onClick={handleIssueSingle} disabled={issueLoading || dropLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
                     {issueLoading ? "Issuing..." : "Issue"}
                   </AnimatedButton>
                 </div>
@@ -181,17 +267,31 @@ export default function AdminCertificates() {
                 <button onClick={() => setShowBulkModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Issues certificates to all checked-in volunteers for an event.</p>
-                <div>
-                  <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>Event ID</label>
-                  <input type="number" value={bulkEventId} onChange={(e) => setBulkEventId(e.target.value)} placeholder="e.g. 3"
-                    style={{ width: "100%", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => (e.target.style.borderColor = "#2e8673")} onBlur={(e) => (e.target.style.borderColor = "#d1d5db")} />
-                </div>
-                <p style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Will be replaced with an event dropdown once the events app is ready.</p>
+                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+                  Issues certificates to all checked-in volunteers for the selected event.
+                </p>
+
+                {dropLoading ? (
+                  <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "12px 0" }}>Loading events...</p>
+                ) : (
+                  <div>
+                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
+                      Event
+                    </label>
+                    <select value={bulkEventId} onChange={(e) => setBulkEventId(e.target.value)} style={selectStyle}>
+                      <option value="">Select an event...</option>
+                      {events.map((ev) => (
+                        <option key={ev.id} value={String(ev.id)}>
+                          {ev.emoji} {ev.title} — {formatDate(ev.date)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
                   <AnimatedButton variant="outline" onClick={() => setShowBulkModal(false)} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>Cancel</AnimatedButton>
-                  <AnimatedButton variant="primary" onClick={handleBulkIssue} disabled={bulkLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
+                  <AnimatedButton variant="primary" onClick={handleBulkIssue} disabled={bulkLoading || dropLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
                     {bulkLoading ? "Generating..." : "Generate All"}
                   </AnimatedButton>
                 </div>
@@ -208,11 +308,11 @@ export default function AdminCertificates() {
             <p style={{ color: "#6b7280", marginTop: "4px" }}>Generate and distribute participation certificates.</p>
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
-            <AnimatedButton variant="outline" onClick={() => setShowIssueModal(true)}
+            <AnimatedButton variant="outline" onClick={openIssueModal}
               style={{ padding: "10px 20px", fontSize: "0.875rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
               <Plus size={14} /> Issue Single
             </AnimatedButton>
-            <AnimatedButton variant="primary" onClick={() => setShowBulkModal(true)}
+            <AnimatedButton variant="primary" onClick={openBulkModal}
               style={{ padding: "10px 20px", fontSize: "0.875rem", borderRadius: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
               <Award size={14} /> Generate All
             </AnimatedButton>

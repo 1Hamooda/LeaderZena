@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Calendar, TrendingUp, Award, Activity, ArrowUpRight } from "lucide-react";
 import PageWrapper from "@/components/ui/PageWrapper";
+import api from "@/services/api";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -12,40 +14,141 @@ const fadeUp = {
   }),
 };
 
-const stats = [
-  { icon: Users, label: "Total Members", value: "2,547", change: "+182 this month" },
-  { icon: Calendar, label: "Active Events", value: 12, change: "+3 new" },
-  { icon: TrendingUp, label: "Participation Rate", value: "78%", change: "+5% vs last month" },
-  { icon: Award, label: "Certificates Issued", value: 834, change: null },
-];
+interface DashData {
+  totalMembers:       number;
+  activeEvents:       number;
+  certificatesIssued: number;
+  pendingApps:        number;
+  pointsDistributed:  number;
+  totalCheckins:      number;
+  eventsThisMonth:    number;
+  avgAttendance:      number;
+  monthlyCheckins:    { month: string; attendance: number }[];
+  recentActivity:     { action: string; user: string; time: string }[];
+}
 
-const chartData = [
-  { month: "Oct", attendance: 180 },
-  { month: "Nov", attendance: 220 },
-  { month: "Dec", attendance: 150 },
-  { month: "Jan", attendance: 280 },
-  { month: "Feb", attendance: 310 },
-  { month: "Mar", attendance: 250 },
-];
+function timeAgo(dateStr: string): string {
+  const diff  = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days  = Math.floor(hours / 24);
+  if (days > 0)  return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (mins > 0)  return `${mins}m ago`;
+  return "Just now";
+}
 
-const recentActivity = [
-  { action: "New member registration", user: "Fatima Al-Sayed", time: "10 min ago" },
-  { action: "Event application submitted", user: "Omar Hassan", time: "25 min ago" },
-  { action: "Certificate generated", user: "Nour Khalil", time: "1 hour ago" },
-  { action: "Announcement published", user: "Admin", time: "2 hours ago" },
-  { action: "Volunteer check-in", user: "Layla Mohammed", time: "3 hours ago" },
-];
+function shortNum(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  return String(n);
+}
 
-const eventMetrics = [
-  { label: "Events This Month", value: 6 },
-  { label: "Avg Attendance", value: 45 },
-  { label: "Points Distributed", value: "12.4K" },
-  { label: "Pending Applications", value: 28 },
-];
-
-const maxAttendance = Math.max(...chartData.map((d) => d.attendance));
+const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export default function AdminDashboard() {
+  const [data,    setData]    = useState<DashData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  async function load() {
+    try {
+      const [usersRes, eventsRes, certsRes, appsRes, checkinsRes, pointsRes, notifsRes] = await Promise.all([
+        api.get("/api/auth/admin/users/"),
+        api.get("/api/events/admin/"),
+        api.get("/api/certificates/admin/"),
+        api.get("/api/events/admin/applications/"),
+        api.get("/api/attendance/admin/checkins/"),
+        api.get("/api/points/admin/leaderboard/"),
+        api.get("/api/notifications/"),
+      ]);
+
+const users       = usersRes.data.results    ?? [];
+const events      = eventsRes.data.results   ?? [];
+const certs       = certsRes.data.results    ?? [];
+const apps        = appsRes.data.results     ?? [];
+const checkins    = checkinsRes.data.results ?? [];
+const notifs      = notifsRes.data.results   ?? [];
+
+        // Points total across all users
+        const leaderboard = pointsRes.data.leaderboard ?? [];
+        const totalPoints  = leaderboard.reduce((sum: number, u: any) => sum + (u.total_points || 0), 0);
+
+        // Active events (upcoming + open)
+        const activeEvents = events.filter((e: any) => ["upcoming", "open"].includes(e.status)).length;
+
+        // Events this month
+        const now       = new Date();
+        const thisMonth = events.filter((e: any) => {
+          const d = new Date(e.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }).length;
+
+        // Monthly checkin chart — last 6 months
+        const monthlyMap: Record<string, number> = {};
+        for (let i = 5; i >= 0; i--) {
+          const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${d.getMonth()}`;
+          monthlyMap[key] = 0;
+        }
+        checkins.forEach((c: any) => {
+          const d   = new Date(c.checked_in_at);
+          const key = `${d.getFullYear()}-${d.getMonth()}`;
+          if (key in monthlyMap) monthlyMap[key]++;
+        });
+        const monthlyCheckins = Object.entries(monthlyMap).map(([key, count]) => {
+          const [year, month] = key.split("-").map(Number);
+          return { month: MONTH_LABELS[month], attendance: count };
+        });
+
+        // Avg attendance
+        const totalEventCount = events.filter((e: any) => e.status !== "archived").length;
+        const avgAttendance   = totalEventCount > 0 ? Math.round(checkins.length / totalEventCount) : 0;
+
+        // Recent activity from notifications (most recent 5)
+        const recentActivity = notifs.slice(0, 5).map((n: any) => ({
+          action: n.title,
+          user:   "MENA Club",
+          time:   timeAgo(n.created_at),
+        }));
+
+        setData({
+          totalMembers:       users.length,
+          activeEvents,
+          certificatesIssued: certs.filter((c: any) => c.status === "issued").length,
+          pendingApps:        apps.filter((a: any) => a.status === "pending").length,
+          pointsDistributed:  totalPoints,
+          totalCheckins:      checkins.length,
+          eventsThisMonth:    thisMonth,
+          avgAttendance,
+          monthlyCheckins,
+          recentActivity,
+        });
+      } catch {
+        // fail silently — keep nulls
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const stats = [
+    { icon: Users,       label: "Total Members",       value: loading ? "—" : String(data?.totalMembers ?? 0),       change: null },
+    { icon: Calendar,    label: "Active Events",        value: loading ? "—" : String(data?.activeEvents ?? 0),       change: null },
+    { icon: TrendingUp,  label: "Total Check-ins",      value: loading ? "—" : String(data?.totalCheckins ?? 0),      change: null },
+    { icon: Award,       label: "Certificates Issued",  value: loading ? "—" : String(data?.certificatesIssued ?? 0), change: null },
+  ];
+
+  const eventMetrics = [
+    { label: "Events This Month",    value: loading ? "—" : String(data?.eventsThisMonth ?? 0) },
+    { label: "Avg Attendance",       value: loading ? "—" : String(data?.avgAttendance ?? 0) },
+    { label: "Points Distributed",   value: loading ? "—" : shortNum(data?.pointsDistributed ?? 0) },
+    { label: "Pending Applications", value: loading ? "—" : String(data?.pendingApps ?? 0) },
+  ];
+
+  const chartData    = data?.monthlyCheckins ?? [];
+  const maxAttendance = Math.max(...chartData.map((d) => d.attendance), 1);
+
   return (
     <PageWrapper>
       <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
@@ -81,17 +184,22 @@ export default function AdminDashboard() {
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
             style={{ backgroundColor: "#ffffff", borderRadius: "16px", padding: "24px", border: "1px solid #f0f0f0" }}
           >
-            <h2 style={{ fontSize: "1.05rem", fontWeight: "700", color: "#0d0b08", marginBottom: "24px" }}>Attendance Overview</h2>
+            <h2 style={{ fontSize: "1.05rem", fontWeight: "700", color: "#0d0b08", marginBottom: "24px" }}>Check-ins — Last 6 Months</h2>
             <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", height: "160px" }}>
-              {chartData.map((d, i) => (
+              {loading ? (
+                <p style={{ color: "#9ca3af", fontSize: "0.875rem", margin: "auto" }}>Loading...</p>
+              ) : chartData.length === 0 ? (
+                <p style={{ color: "#9ca3af", fontSize: "0.875rem", margin: "auto" }}>No data yet.</p>
+              ) : chartData.map((d, i) => (
                 <div key={d.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", height: "100%" }}>
                   <span style={{ fontSize: "0.7rem", color: "#6b7280", fontWeight: "500" }}>{d.attendance}</span>
                   <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
                     <motion.div
-                      initial={{ height: 0 }} animate={{ height: `${(d.attendance / maxAttendance) * 100}%` }}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${(d.attendance / maxAttendance) * 100}%` }}
                       transition={{ delay: 0.5 + i * 0.08, duration: 0.6, ease: "easeOut" }}
                       whileHover={{ backgroundColor: "#2e8673" }}
-                      style={{ width: "100%", backgroundColor: "rgba(46,134,115,0.6)", borderRadius: "6px 6px 0 0", cursor: "default", transition: "background-color 0.2s" }}
+                      style={{ width: "100%", backgroundColor: "rgba(46,134,115,0.6)", borderRadius: "6px 6px 0 0", cursor: "default", transition: "background-color 0.2s", minHeight: "4px" }}
                     />
                   </div>
                   <span style={{ fontSize: "0.7rem", color: "#6b7280" }}>{d.month}</span>
@@ -105,24 +213,30 @@ export default function AdminDashboard() {
             style={{ backgroundColor: "#ffffff", borderRadius: "16px", padding: "24px", border: "1px solid #f0f0f0" }}
           >
             <h2 style={{ fontSize: "1.05rem", fontWeight: "700", color: "#0d0b08", marginBottom: "20px" }}>Recent Activity</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {recentActivity.map((a, i) => (
-                <motion.div key={i}
-                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.45 + i * 0.08 }}
-                  whileHover={{ x: 4, backgroundColor: "#f0f9f7" }}
-                  style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", borderRadius: "12px", backgroundColor: "#f9fafb", cursor: "default", transition: "background-color 0.2s" }}
-                >
-                  <div style={{ height: "36px", width: "36px", borderRadius: "10px", backgroundColor: "#f0f9f7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Activity size={16} style={{ color: "#2e8673" }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0d0b08", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.action}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>{a.user}</p>
-                  </div>
-                  <span style={{ fontSize: "0.7rem", color: "#9ca3af", flexShrink: 0 }}>{a.time}</span>
-                </motion.div>
-              ))}
-            </div>
+            {loading ? (
+              <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "20px 0" }}>Loading...</p>
+            ) : (data?.recentActivity ?? []).length === 0 ? (
+              <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "20px 0" }}>No recent activity.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {(data?.recentActivity ?? []).map((a, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.45 + i * 0.08 }}
+                    whileHover={{ x: 4, backgroundColor: "#f0f9f7" }}
+                    style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", borderRadius: "12px", backgroundColor: "#f9fafb", cursor: "default", transition: "background-color 0.2s" }}
+                  >
+                    <div style={{ height: "36px", width: "36px", borderRadius: "10px", backgroundColor: "#f0f9f7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Activity size={16} style={{ color: "#2e8673" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0d0b08", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.action}</p>
+                      <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>{a.user}</p>
+                    </div>
+                    <span style={{ fontSize: "0.7rem", color: "#9ca3af", flexShrink: 0 }}>{a.time}</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -147,6 +261,7 @@ export default function AdminDashboard() {
             ))}
           </div>
         </motion.div>
+
       </div>
     </PageWrapper>
   );
