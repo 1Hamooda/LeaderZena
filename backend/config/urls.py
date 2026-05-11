@@ -11,6 +11,8 @@ urlpatterns = [
     path("api/certificates/",   include("apps.certificates.urls")),
     path("api/events/",         include("apps.events.urls")),
     path("api/attendance/",     include("apps.attendance.urls")),
+    path("api/cv/",             include("apps.cv.urls")),
+    path("api/analytics/",      include("apps.analytics.urls")),
+    path("api/announcements/",  include("apps.announcements.urls")),
 ]
-
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
