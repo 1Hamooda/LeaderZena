@@ -18,11 +18,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Third party
     "rest_framework",
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
-    # Local apps
     "apps.users",
     "apps.events",
     "apps.attendance",
@@ -67,7 +65,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# PostgreSQL
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -122,3 +119,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# AI Keys
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

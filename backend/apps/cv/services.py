@@ -32,7 +32,6 @@ def extract_text_from_file(uploaded_file) -> str:
 def save_cv(user, uploaded_file):
     """
     Create or replace the CV for a user.
-    Awards 20 points on first upload.
     Returns (cv_instance, created: bool).
     """
     text    = extract_text_from_file(uploaded_file)
@@ -45,9 +44,5 @@ def save_cv(user, uploaded_file):
             "extracted_text": text,
         },
     )
-
-    if created:
-        from apps.points.services import award_points
-        award_points(user, 20, "cv_uploaded", note="CV uploaded for the first time")
 
     return cv, created

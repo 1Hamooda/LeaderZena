@@ -59,12 +59,29 @@ const roleLabels: Record<Role, string> = {
 const profileHref: Record<Role, string> = {
   member:    "/member/profile",
   volunteer: "/volunteer/profile",
-  admin:     "/admin/dashboard",
+  admin:     "/admin/profile",
 };
 
 function getInitials(user: User | null): string {
   if (!user) return "??";
   return `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
+}
+
+function Avatar({ user, size }: { user: User | null; size: number }) {
+  if (user?.avatar) {
+    return (
+      <img
+        src={user.avatar}
+        alt="avatar"
+        style={{ width: `${size}px`, height: `${size}px`, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+      />
+    );
+  }
+  return (
+    <div style={{ height: `${size}px`, width: `${size}px`, borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontSize: size > 36 ? "0.8rem" : "0.72rem", fontWeight: "800", flexShrink: 0 }}>
+      {getInitials(user)}
+    </div>
+  );
 }
 
 export default function DashboardLayout({
@@ -102,9 +119,7 @@ export default function DashboardLayout({
           whileHover={{ backgroundColor: "#f0f9f7" }}
           style={{ padding: "14px 16px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", transition: "background-color 0.2s", flexShrink: 0 }}
         >
-          <div style={{ height: "40px", width: "40px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontSize: "0.8rem", fontWeight: "800", flexShrink: 0 }}>
-            {getInitials(user)}
-          </div>
+          <Avatar user={user} size={40} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0d0b08", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {user?.full_name || "Loading..."}
@@ -159,29 +174,29 @@ export default function DashboardLayout({
       </nav>
 
       <div style={{ padding: "10px", borderTop: "1px solid #f0f0f0", flexShrink: 0 }}>
-  <motion.div whileHover={{ x: 2 }} transition={{ type: "spring", stiffness: 400, damping: 30 }}>
-    <button
-      onClick={async () => {
-        try {
-          const refresh = localStorage.getItem("refresh_token") || "";
-          await api.post("/api/auth/logout/", { refresh });
-        } finally {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          window.location.href = "/login";
-        }
-      }}
-      style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "12px", fontSize: "0.875rem", fontWeight: "500", color: "#ef4444", background: "none", border: "none", cursor: "pointer", width: "100%" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#fef2f2"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
-    >
-      <LogOut size={17} style={{ flexShrink: 0 }} />
-      <span>Logout</span>
-    </button>
-  </motion.div>
-</div>
+        <motion.div whileHover={{ x: 2 }} transition={{ type: "spring", stiffness: 400, damping: 30 }}>
+          <button
+            onClick={async () => {
+              try {
+                const refresh = localStorage.getItem("refresh_token") || "";
+                await api.post("/api/auth/logout/", { refresh });
+              } finally {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                window.location.href = "/login";
+              }
+            }}
+            style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "12px", fontSize: "0.875rem", fontWeight: "500", color: "#ef4444", background: "none", border: "none", cursor: "pointer", width: "100%" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#fef2f2"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+          >
+            <LogOut size={17} style={{ flexShrink: 0 }} />
+            <span>Logout</span>
+          </button>
+        </motion.div>
+      </div>
     </div>
   );
 
@@ -251,11 +266,8 @@ export default function DashboardLayout({
             </Link>
 
             <Link href={profileHref[role]} style={{ textDecoration: "none" }}>
-              <motion.div
-                whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-                style={{ height: "34px", width: "34px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontSize: "0.72rem", fontWeight: "800", cursor: "pointer", border: "2px solid #e0f2ee" }}
-              >
-                {getInitials(user)}
+              <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }} style={{ borderRadius: "50%", border: "2px solid #e0f2ee", overflow: "hidden" }}>
+                <Avatar user={user} size={34} />
               </motion.div>
             </Link>
           </div>

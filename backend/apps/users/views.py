@@ -68,7 +68,7 @@ def logout(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 @api_view(["PATCH"])
@@ -76,8 +76,8 @@ def me(request):
 def update_profile(request):
     serializer = UpdateProfileSerializer(request.user, data=request.data, partial=True)
     if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "Profile updated.", "user": UserSerializer(request.user).data})
+        updated = serializer.save()
+        return Response({"message": "Profile updated.", "user": UserSerializer(updated, context={"request": request}).data})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

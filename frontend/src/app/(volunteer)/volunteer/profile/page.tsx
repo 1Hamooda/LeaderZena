@@ -1,12 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Award, Calendar, Clock } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Check, Award, Calendar, Clock, Camera } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 import AnimatedInput from "@/components/ui/AnimatedInput";
 import PageWrapper from "@/components/ui/PageWrapper";
-import { getMe, updateProfile } from "@/services/authService";
+import { getMe } from "@/services/authService";
 import api from "@/services/api";
 import type { User } from "@/services/authService";
 
@@ -18,14 +18,16 @@ function getInitials(user: User | null): string {
 }
 
 export default function VolunteerProfile() {
-  const [user,         setUser]         = useState<User | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState("");
-  const [showToast,    setShowToast]    = useState(false);
-  const [certCount,    setCertCount]    = useState(0);
+  const [user,          setUser]          = useState<User | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState("");
+  const [showToast,     setShowToast]     = useState(false);
+  const [certCount,     setCertCount]     = useState(0);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form fields
   const [firstName,      setFirstName]      = useState("");
   const [lastName,       setLastName]       = useState("");
   const [phone,          setPhone]          = useState("");
@@ -34,7 +36,6 @@ export default function VolunteerProfile() {
   const [bio,            setBio]            = useState("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  // ── Load user + certificates on mount ─────────────────────────
   useEffect(() => {
     async function loadData() {
       try {
@@ -42,7 +43,6 @@ export default function VolunteerProfile() {
           getMe(),
           api.get("/api/certificates/"),
         ]);
-
         setUser(userData);
         setFirstName(userData.first_name || "");
         setLastName(userData.last_name   || "");
@@ -52,6 +52,7 @@ export default function VolunteerProfile() {
         setBio(userData.bio              || "");
         setSelectedSkills(userData.skills || []);
         setCertCount(certsData.data.length || 0);
+        if (userData.avatar) setAvatarPreview(userData.avatar);
       } catch {
         setError("Failed to load profile. Please refresh.");
       } finally {
@@ -66,21 +67,34 @@ export default function VolunteerProfile() {
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
     );
 
-  // ── Save profile ───────────────────────────────────────────────
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
   async function handleSave() {
     setSaving(true);
     setError("");
     try {
-      const updated = await updateProfile({
-        first_name: firstName,
-        last_name:  lastName,
-        phone,
-        city,
-        country,
-        bio,
-        skills: selectedSkills,
+      const formData = new FormData();
+      formData.append("first_name", firstName);
+      formData.append("last_name",  lastName);
+      formData.append("phone",      phone);
+      formData.append("city",       city);
+      formData.append("country",    country);
+      formData.append("bio",        bio);
+      selectedSkills.forEach((s) => formData.append("skills", s));
+      if (avatarFile) formData.append("avatar", avatarFile);
+
+      const { data } = await api.patch("/api/auth/me/update/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      setUser(updated);
+
+      setUser(data.user);
+      if (data.user.avatar) setAvatarPreview(data.user.avatar);
+      setAvatarFile(null);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch {
@@ -90,7 +104,6 @@ export default function VolunteerProfile() {
     }
   }
 
-  // ── Discard ────────────────────────────────────────────────────
   function handleDiscard() {
     if (!user) return;
     setFirstName(user.first_name || "");
@@ -100,6 +113,9 @@ export default function VolunteerProfile() {
     setCountry(user.country      || "");
     setBio(user.bio              || "");
     setSelectedSkills(user.skills || []);
+    setAvatarFile(null);
+    if (user.avatar) setAvatarPreview(user.avatar);
+    else setAvatarPreview(null);
   }
 
   const stats = [
@@ -108,26 +124,20 @@ export default function VolunteerProfile() {
     { icon: Award,    label: "Certificates",     value: certCount },
   ];
 
-  if (loading) {
-    return (
-      <PageWrapper>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-          <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading profile...</p>
-        </div>
-      </PageWrapper>
-    );
-  }
+  if (loading) return (
+    <PageWrapper>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+        <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading profile...</p>
+      </div>
+    </PageWrapper>
+  );
 
   return (
     <PageWrapper>
-
-      {/* Success Toast */}
       <AnimatePresence>
         {showToast && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             style={{ position: "fixed", top: "24px", right: "24px", zIndex: 100, backgroundColor: "#ffffff", borderRadius: "14px", padding: "14px 20px", boxShadow: "0 8px 32px rgba(46,134,115,0.18)", border: "1px solid #dcfce7", display: "flex", alignItems: "center", gap: "10px" }}
           >
@@ -143,13 +153,11 @@ export default function VolunteerProfile() {
       </AnimatePresence>
 
       <div style={{ maxWidth: "680px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "8px" }}>
-
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <h1 style={{ fontSize: "1.875rem", fontWeight: "800", color: "#0d0b08" }}>Profile & Settings</h1>
           <p style={{ color: "#6b7280", marginTop: "4px", marginBottom: "24px" }}>Manage your account details.</p>
         </motion.div>
 
-        {/* Error banner */}
         {error && (
           <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "12px 16px", color: "#dc2626", fontSize: "0.875rem", marginBottom: "8px" }}>
             {error}
@@ -162,10 +170,7 @@ export default function VolunteerProfile() {
           style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "8px" }}
         >
           {stats.map((s) => (
-            <motion.div
-              key={s.label}
-              whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(46,134,115,0.1)" }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            <motion.div key={s.label} whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(46,134,115,0.1)" }} transition={{ type: "spring", stiffness: 300, damping: 20 }}
               style={{ backgroundColor: "#ffffff", borderRadius: "14px", padding: "18px", border: "1px solid #f0f0f0", textAlign: "center" }}
             >
               <div style={{ height: "36px", width: "36px", borderRadius: "10px", backgroundColor: "#f0f9f7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
@@ -177,101 +182,74 @@ export default function VolunteerProfile() {
           ))}
         </motion.div>
 
-        {/* Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}
           style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", border: "1px solid #f0f0f0", display: "flex", flexDirection: "column", gap: "28px" }}
         >
-
           {/* Avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              style={{ height: "80px", width: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "800", color: "#ffffff", flexShrink: 0, cursor: "pointer", border: "3px solid #e0f2ee" }}
-            >
-              {getInitials(user)}
-            </motion.div>
+            <div style={{ position: "relative" }}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                onClick={() => fileInputRef.current?.click()}
+                style={{ height: "80px", width: "80px", borderRadius: "50%", overflow: "hidden", cursor: "pointer", border: "3px solid #e0f2ee", flexShrink: 0 }}
+              >
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: "800", color: "#ffffff" }}>
+                    {getInitials(user)}
+                  </div>
+                )}
+              </motion.div>
+              <div onClick={() => fileInputRef.current?.click()}
+                style={{ position: "absolute", bottom: "0", right: "0", height: "24px", width: "24px", borderRadius: "50%", backgroundColor: "#2e8673", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #ffffff" }}
+              >
+                <Camera size={12} style={{ color: "#ffffff" }} />
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: "none" }} />
+            </div>
             <div>
               <p style={{ fontSize: "1rem", fontWeight: "700", color: "#0d0b08" }}>{user?.full_name}</p>
               <p style={{ fontSize: "0.8rem", color: "#6b7280", marginBottom: "8px" }}>{user?.email}</p>
-              <AnimatedButton variant="outline" style={{ padding: "8px 16px", fontSize: "0.875rem", borderRadius: "10px" }}>Change Photo</AnimatedButton>
-              <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "6px" }}>JPG, PNG. Max 2MB.</p>
+              <p style={{ fontSize: "0.75rem", color: "#9ca3af" }}>JPG, PNG. Max 2MB.</p>
             </div>
           </div>
 
-          {/* Name row */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <AnimatedInput
-              label="First Name"
-              value={firstName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-              placeholder="First name"
-            />
-            <AnimatedInput
-              label="Last Name"
-              value={lastName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-              placeholder="Last name"
-            />
+            <AnimatedInput label="First Name" value={firstName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)} placeholder="First name" />
+            <AnimatedInput label="Last Name"  value={lastName}  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}  placeholder="Last name" />
           </div>
 
-          {/* Phone + Email */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <AnimatedInput
-              label="Phone"
-              value={phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-              placeholder="+970 5X XXX XXXX"
-            />
+            <AnimatedInput label="Phone" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder="+970 5X XXX XXXX" />
             <div>
               <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Email</label>
-              <input
-                value={user?.email || ""}
-                disabled
-                style={{ width: "100%", padding: "12px 16px", border: "1px solid #e5e7eb", borderRadius: "12px", fontSize: "0.875rem", backgroundColor: "#f9fafb", color: "#9ca3af", boxSizing: "border-box" }}
-              />
+              <input value={user?.email || ""} disabled style={{ width: "100%", padding: "12px 16px", border: "1px solid #e5e7eb", borderRadius: "12px", fontSize: "0.875rem", backgroundColor: "#f9fafb", color: "#9ca3af", boxSizing: "border-box" }} />
             </div>
           </div>
 
-          {/* City + Country */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <AnimatedInput
-              label="City"
-              value={city}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
-              placeholder="e.g. Ramallah"
-            />
-            <AnimatedInput
-              label="Country"
-              value={country}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
-              placeholder="e.g. Palestine"
-            />
+            <AnimatedInput label="City"    value={city}    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}    placeholder="e.g. Ramallah" />
+            <AnimatedInput label="Country" value={country} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)} placeholder="e.g. Palestine" />
           </div>
 
-          {/* Bio */}
           <div>
             <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Bio</label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="A short introduction about yourself..."
-              rows={3}
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short introduction about yourself..." rows={3}
               style={{ width: "100%", padding: "12px 16px", border: "1px solid #d1d5db", borderRadius: "12px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
               onFocus={(e) => { e.target.style.borderColor = "#2e8673"; e.target.style.boxShadow = "0 0 0 3px rgba(46,134,115,0.1)"; }}
               onBlur={(e)  => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
             />
           </div>
 
-          {/* Skills */}
           <div>
             <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "12px" }}>Skills</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {allSkills.map((skill, i) => {
                 const selected = selectedSkills.includes(skill);
                 return (
-                  <motion.button
-                    key={skill}
+                  <motion.button key={skill}
                     initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.25 + i * 0.04 }}
                     whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                     onClick={() => toggleSkill(skill)}
@@ -289,31 +267,15 @@ export default function VolunteerProfile() {
                 );
               })}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "8px" }}>
-              {selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected
-            </p>
+            <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "8px" }}>{selectedSkills.length} skill{selectedSkills.length !== 1 ? "s" : ""} selected</p>
           </div>
 
-          {/* Actions */}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "8px", borderTop: "1px solid #f0f0f0" }}>
-            <AnimatedButton
-              variant="outline"
-              onClick={handleDiscard}
-              disabled={saving}
-              style={{ padding: "11px 24px", fontSize: "0.95rem", borderRadius: "12px" }}
-            >
-              Discard
-            </AnimatedButton>
-            <AnimatedButton
-              variant="primary"
-              onClick={handleSave}
-              disabled={saving}
-              style={{ padding: "11px 28px", fontSize: "0.95rem", borderRadius: "12px" }}
-            >
+            <AnimatedButton variant="outline" onClick={handleDiscard} disabled={saving} style={{ padding: "11px 24px", fontSize: "0.95rem", borderRadius: "12px" }}>Discard</AnimatedButton>
+            <AnimatedButton variant="primary" onClick={handleSave}    disabled={saving} style={{ padding: "11px 28px", fontSize: "0.95rem", borderRadius: "12px" }}>
               {saving ? "Saving..." : "Save Profile"}
             </AnimatedButton>
           </div>
-
         </motion.div>
       </div>
     </PageWrapper>
