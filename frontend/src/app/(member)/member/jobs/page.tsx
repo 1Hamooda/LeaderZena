@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Loader2, Briefcase, Star, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, Briefcase, Star, ArrowRight, RefreshCw } from "lucide-react";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 import PageWrapper from "@/components/ui/PageWrapper";
-import { analyzeCv, JobMatch } from "@/services/aiJobService";
+import { analyzeCv, getLastAnalysis, JobMatch } from "@/services/aiJobService";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -16,9 +16,26 @@ const fadeUp = {
 };
 
 export default function MemberJobs() {
-  const [matches, setMatches] = useState<JobMatch[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [matches,  setMatches]  = useState<JobMatch[] | null>(null);
+  const [loading,  setLoading]  = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadLastAnalysis() {
+      try {
+        const result = await getLastAnalysis();
+        if (result.matches && result.matches.length > 0) {
+          setMatches(result.matches);
+        }
+      } catch {
+        // no previous analysis
+      } finally {
+        setFetching(false);
+      }
+    }
+    loadLastAnalysis();
+  }, []);
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -32,6 +49,14 @@ export default function MemberJobs() {
       setLoading(false);
     }
   };
+
+  if (fetching) return (
+    <PageWrapper>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+        <p style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading...</p>
+      </div>
+    </PageWrapper>
+  );
 
   return (
     <PageWrapper>
@@ -48,7 +73,7 @@ export default function MemberJobs() {
             style={{ backgroundColor: "#ffffff", borderRadius: "16px", padding: "32px", border: "1px solid #f0f0f0", maxWidth: "640px", display: "flex", flexDirection: "column", gap: "16px" }}
           >
             <p style={{ color: "#374151", fontSize: "0.95rem" }}>
-              اضغط على الزر أدناه لتحليل سيرتك الذاتية والحصول على توصيات وظيفية مخصصة من الوظائف المتاحة.
+              اضغط على الزر أدناه لتحليل سيرتك الذاتية والحصول على توصيات وظيفية مخصصة.
             </p>
             {error && <p style={{ color: "#ef4444", fontSize: "0.875rem" }}>{error}</p>}
             <AnimatedButton
@@ -65,9 +90,15 @@ export default function MemberJobs() {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "680px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>تم العثور على {matches.length} وظائف مناسبة</p>
-              <button onClick={() => setMatches(null)} style={{ fontSize: "0.875rem", color: "#2e8673", background: "none", border: "none", cursor: "pointer", fontWeight: "500" }}>
-                تحليل مرة أخرى
-              </button>
+              <AnimatedButton
+                variant="outline"
+                onClick={handleAnalyze}
+                disabled={loading}
+                style={{ padding: "7px 14px", fontSize: "0.8rem", borderRadius: "10px", display: "flex", alignItems: "center", gap: "4px" }}
+              >
+                {loading ? <Loader2 size={14} /> : <RefreshCw size={14} />}
+                {loading ? "جاري التحديث..." : "تحديث التحليل"}
+              </AnimatedButton>
             </div>
 
             {matches.map((job, i) => (

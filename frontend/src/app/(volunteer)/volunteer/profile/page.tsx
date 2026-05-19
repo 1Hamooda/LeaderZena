@@ -78,23 +78,27 @@ export default function VolunteerProfile() {
     setSaving(true);
     setError("");
     try {
-      const formData = new FormData();
-      formData.append("first_name", firstName);
-      formData.append("last_name",  lastName);
-      formData.append("phone",      phone);
-      formData.append("city",       city);
-      formData.append("country",    country);
-      formData.append("bio",        bio);
-      selectedSkills.forEach((s) => formData.append("skills", s));
-      if (avatarFile) formData.append("avatar", avatarFile);
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("avatar", avatarFile);
+        await api.patch("/api/auth/me/update/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setAvatarFile(null);
+      }
 
-      const { data } = await api.patch("/api/auth/me/update/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { data } = await api.patch("/api/auth/me/update/", {
+        first_name: firstName,
+        last_name:  lastName,
+        phone,
+        city,
+        country,
+        bio,
+        skills: selectedSkills,
       });
 
       setUser(data.user);
       if (data.user.avatar) setAvatarPreview(data.user.avatar);
-      setAvatarFile(null);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch {
@@ -164,7 +168,6 @@ export default function VolunteerProfile() {
           </div>
         )}
 
-        {/* Stats */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.5 }}
           style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "8px" }}
@@ -186,12 +189,9 @@ export default function VolunteerProfile() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}
           style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", border: "1px solid #f0f0f0", display: "flex", flexDirection: "column", gap: "28px" }}
         >
-          {/* Avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <div style={{ position: "relative" }}>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                onClick={() => fileInputRef.current?.click()}
+              <motion.div whileHover={{ scale: 1.05 }} onClick={() => fileInputRef.current?.click()}
                 style={{ height: "80px", width: "80px", borderRadius: "50%", overflow: "hidden", cursor: "pointer", border: "3px solid #e0f2ee", flexShrink: 0 }}
               >
                 {avatarPreview ? (

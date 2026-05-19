@@ -64,22 +64,26 @@ export default function AdminProfile() {
     setSaving(true);
     setError("");
     try {
-      const formData = new FormData();
-      formData.append("first_name", firstName);
-      formData.append("last_name",  lastName);
-      formData.append("phone",      phone);
-      formData.append("city",       city);
-      formData.append("country",    country);
-      formData.append("bio",        bio);
-      if (avatarFile) formData.append("avatar", avatarFile);
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("avatar", avatarFile);
+        await api.patch("/api/auth/me/update/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setAvatarFile(null);
+      }
 
-      const { data } = await api.patch("/api/auth/me/update/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { data } = await api.patch("/api/auth/me/update/", {
+        first_name: firstName,
+        last_name:  lastName,
+        phone,
+        city,
+        country,
+        bio,
       });
 
       setUser(data.user);
       if (data.user.avatar) setAvatarPreview(data.user.avatar);
-      setAvatarFile(null);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch {
@@ -147,12 +151,9 @@ export default function AdminProfile() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
           style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", border: "1px solid #f0f0f0", display: "flex", flexDirection: "column", gap: "28px" }}
         >
-          {/* Avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <div style={{ position: "relative" }}>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                onClick={() => fileInputRef.current?.click()}
+              <motion.div whileHover={{ scale: 1.05 }} onClick={() => fileInputRef.current?.click()}
                 style={{ height: "80px", width: "80px", borderRadius: "50%", overflow: "hidden", cursor: "pointer", border: "3px solid #e0f2ee", flexShrink: 0 }}
               >
                 {avatarPreview ? (
@@ -163,8 +164,7 @@ export default function AdminProfile() {
                   </div>
                 )}
               </motion.div>
-              <div
-                onClick={() => fileInputRef.current?.click()}
+              <div onClick={() => fileInputRef.current?.click()}
                 style={{ position: "absolute", bottom: "0", right: "0", height: "24px", width: "24px", borderRadius: "50%", backgroundColor: "#2e8673", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #ffffff" }}
               >
                 <Camera size={12} style={{ color: "#ffffff" }} />
@@ -182,13 +182,11 @@ export default function AdminProfile() {
             </div>
           </div>
 
-          {/* Name */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <AnimatedInput label="First Name" value={firstName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)} placeholder="First name" />
             <AnimatedInput label="Last Name"  value={lastName}  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}  placeholder="Last name" />
           </div>
 
-          {/* Phone + Email */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <AnimatedInput label="Phone" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder="+970 5X XXX XXXX" />
             <div>
@@ -197,25 +195,20 @@ export default function AdminProfile() {
             </div>
           </div>
 
-          {/* City + Country */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <AnimatedInput label="City"    value={city}    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}    placeholder="e.g. Ramallah" />
             <AnimatedInput label="Country" value={country} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)} placeholder="e.g. Palestine" />
           </div>
 
-          {/* Bio */}
           <div>
             <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" }}>Bio</label>
-            <textarea
-              value={bio} onChange={(e) => setBio(e.target.value)}
-              placeholder="A short introduction about yourself..." rows={3}
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short introduction about yourself..." rows={3}
               style={{ width: "100%", padding: "12px 16px", border: "1px solid #d1d5db", borderRadius: "12px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
               onFocus={(e) => { e.target.style.borderColor = "#2e8673"; e.target.style.boxShadow = "0 0 0 3px rgba(46,134,115,0.1)"; }}
               onBlur={(e)  => { e.target.style.borderColor = "#d1d5db"; e.target.style.boxShadow = "none"; }}
             />
           </div>
 
-          {/* Actions */}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "8px", borderTop: "1px solid #f0f0f0" }}>
             <AnimatedButton variant="outline" onClick={handleDiscard} disabled={saving} style={{ padding: "11px 24px", fontSize: "0.95rem", borderRadius: "12px" }}>Discard</AnimatedButton>
             <AnimatedButton variant="primary" onClick={handleSave}    disabled={saving} style={{ padding: "11px 28px", fontSize: "0.95rem", borderRadius: "12px" }}>

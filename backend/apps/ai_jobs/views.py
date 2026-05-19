@@ -5,6 +5,7 @@ from rest_framework.response        import Response
 
 from apps.cv.models                 import CV
 from .services                      import analyze_cv_with_gemini
+from .models                        import JobAnalysis
 
 
 @api_view(["POST"])
@@ -37,3 +38,25 @@ def analyze_cv(request):
         )
 
     return Response({"matches": matches})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_last_analysis(request):
+    """
+    GET /api/ai-jobs/last-analysis/
+    يرجع آخر تحليل للمستخدم.
+    """
+    import json
+    try:
+        analyses = JobAnalysis.objects.filter(user=request.user).order_by("-created_at")
+        for analysis in analyses:
+            try:
+                matches = json.loads(analysis.analysis_text)
+                if isinstance(matches, list) and len(matches) > 0:
+                    return Response({"matches": matches})
+            except Exception:
+                continue
+        return Response({"matches": None})
+    except Exception:
+        return Response({"matches": None})

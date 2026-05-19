@@ -80,6 +80,9 @@ def analyze_cv_with_gemini(cv_text: str, user=None) -> list:
         raise Exception("فشل في قراءة استجابة الـ AI.")
 
     if user:
-        JobAnalysis.objects.create(user=user, analysis_text=raw)
+        JobAnalysis.objects.create(
+            user=user,
+            analysis_text=json.dumps(matches, ensure_ascii=False)
+        )
 
     return matches

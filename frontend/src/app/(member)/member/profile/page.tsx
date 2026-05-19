@@ -86,26 +86,29 @@ export default function MemberProfile() {
     setSaving(true);
     setError("");
     try {
-      const formData = new FormData();
-      formData.append("first_name", firstName);
-      formData.append("last_name",  lastName);
-      formData.append("phone",      phone);
-      formData.append("city",       city);
-      formData.append("country",    country);
-      formData.append("education",  education);
-      formData.append("bio",        bio);
-      formData.append("experience", experience);
-      selectedSkills.forEach((s) => formData.append("skills", s));
-      if (avatarFile) formData.append("avatar", avatarFile);
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("avatar", avatarFile);
+        await api.patch("/api/auth/me/update/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setAvatarFile(null);
+      }
 
-      const { data } = await api.patch("/api/auth/me/update/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { data } = await api.patch("/api/auth/me/update/", {
+        first_name: firstName,
+        last_name:  lastName,
+        phone,
+        city,
+        country,
+        education,
+        bio,
+        experience,
+        skills: selectedSkills,
       });
 
       setUser(data.user);
       if (data.user.avatar) setAvatarPreview(data.user.avatar);
-      setAvatarFile(null);
-
       if (cvFile) { await uploadCv(cvFile); setCvFile(null); setHasExistingCv(true); }
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -186,12 +189,9 @@ export default function MemberProfile() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
           style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", border: "1px solid #f0f0f0", display: "flex", flexDirection: "column", gap: "28px" }}
         >
-          {/* Avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <div style={{ position: "relative" }}>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                onClick={() => fileInputRef.current?.click()}
+              <motion.div whileHover={{ scale: 1.05 }} onClick={() => fileInputRef.current?.click()}
                 style={{ height: "80px", width: "80px", borderRadius: "50%", overflow: "hidden", cursor: "pointer", border: "3px solid #e0f2ee", flexShrink: 0 }}
               >
                 {avatarPreview ? (
@@ -202,8 +202,7 @@ export default function MemberProfile() {
                   </div>
                 )}
               </motion.div>
-              <div
-                onClick={() => fileInputRef.current?.click()}
+              <div onClick={() => fileInputRef.current?.click()}
                 style={{ position: "absolute", bottom: "0", right: "0", height: "24px", width: "24px", borderRadius: "50%", backgroundColor: "#2e8673", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: "2px solid #ffffff" }}
               >
                 <Camera size={12} style={{ color: "#ffffff" }} />
@@ -282,7 +281,6 @@ export default function MemberProfile() {
             />
           </div>
 
-          {/* CV Upload */}
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151" }}>Upload CV</label>
