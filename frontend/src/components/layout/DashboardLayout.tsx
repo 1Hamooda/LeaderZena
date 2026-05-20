@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Calendar, Bell, Briefcase, Users, BarChart3,
   FileText, LogOut, Menu, X, ChevronRight,
-  ClipboardCheck, Award, Send, Key, Download,
+  ClipboardCheck, Award, Send, Key, Download, Globe,
 } from "lucide-react";
 import { getMe } from "@/services/authService";
 import api from "@/services/api";
@@ -116,6 +116,19 @@ export default function DashboardLayout({
           <ChevronRight size={14} style={{ color: "#9ca3af", flexShrink: 0 }} />
         </motion.div>
       </Link>
+
+      {/* Home button */}
+<Link href="/" style={{ textDecoration: "none" }}>
+  <motion.div
+    whileHover={{ backgroundColor: "#f0f9f7" }}
+    style={{ padding: "10px 16px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", transition: "background-color 0.2s" }}
+  >
+    <div style={{ height: "28px", width: "28px", borderRadius: "8px", backgroundColor: "#f0f9f7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <Globe size={14} style={{ color: "#2e8673" }} />
+    </div>
+    <span style={{ fontSize: "0.8rem", fontWeight: "600", color: "#6b7280" }}>Back to Home</span>
+  </motion.div>
+</Link>
 
       <nav style={{ flex: 1, padding: "8px 10px", overflowY: "auto", minHeight: 0 }}>
         {items.map((item) => {

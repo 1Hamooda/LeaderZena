@@ -66,19 +66,17 @@ export default function AdminCertificates() {
   const [error,         setError]         = useState("");
   const [eventFilter,   setEventFilter]   = useState("");
   const [statusFilter,  setStatusFilter]  = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // Events + users for dropdowns
-  const [events,       setEvents]       = useState<Event[]>([]);
-  const [users,        setUsers]        = useState<User[]>([]);
-  const [dropLoading,  setDropLoading]  = useState(false);
+  const [events,      setEvents]      = useState<Event[]>([]);
+  const [users,       setUsers]       = useState<User[]>([]);
+  const [dropLoading, setDropLoading] = useState(false);
 
-  // Issue single modal
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [issueUserId,    setIssueUserId]    = useState("");
   const [issueEventId,   setIssueEventId]   = useState("");
   const [issueLoading,   setIssueLoading]   = useState(false);
 
-  // Bulk modal
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkEventId,   setBulkEventId]   = useState("");
   const [bulkLoading,   setBulkLoading]   = useState(false);
@@ -108,9 +106,8 @@ export default function AdminCertificates() {
 
   useEffect(() => { fetchCertificates(); }, [statusFilter, eventFilter]);
 
-  // Load events + users when opening either modal
   async function loadDropdownData() {
-    if (events.length > 0) return; // already loaded
+    if (events.length > 0) return;
     setDropLoading(true);
     try {
       const [eventsRes, usersRes] = await Promise.all([
@@ -119,16 +116,12 @@ export default function AdminCertificates() {
       ]);
       setEvents(eventsRes.data.results);
       setUsers(usersRes.data.results);
-    } catch {
-      showToast("Failed to load events/users.");
-    } finally {
-      setDropLoading(false);
-    }
+    } catch { showToast("Failed to load events/users."); }
+    finally { setDropLoading(false); }
   }
 
   async function openIssueModal() {
-    setIssueUserId("");
-    setIssueEventId("");
+    setIssueUserId(""); setIssueEventId("");
     setShowIssueModal(true);
     await loadDropdownData();
   }
@@ -148,8 +141,7 @@ export default function AdminCertificates() {
         event_id: parseInt(issueEventId),
       });
       showToast(data.message);
-      setShowIssueModal(false);
-      setIssueUserId(""); setIssueEventId("");
+      setShowIssueModal(false); setIssueUserId(""); setIssueEventId("");
       fetchCertificates();
     } catch (err: any) {
       showToast(err?.response?.data?.error || "Failed to issue certificate.");
@@ -178,6 +170,30 @@ export default function AdminCertificates() {
       showToast(data.message); fetchCertificates();
     } catch { showToast("Failed to revoke certificate."); }
     finally { setActionLoading(null); }
+  }
+
+  // Blob-based download — sends auth token, triggers save dialog
+  async function downloadCert(cert: Certificate) {
+    if (downloadingId === cert.uuid) return;
+    setDownloadingId(cert.uuid);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${API_BASE}/api/certificates/${cert.uuid}/download/`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `MENA_Certificate_${cert.user_name.replace(/\s+/g, "_")}_${cert.event_title.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { showToast("Download failed. Please try again."); }
+    finally { setDownloadingId(null); }
   }
 
   const selectStyle: React.CSSProperties = {
@@ -209,43 +225,30 @@ export default function AdminCertificates() {
                 <button onClick={() => setShowIssueModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
                 {dropLoading ? (
                   <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "12px 0" }}>Loading...</p>
                 ) : (
                   <>
-                    {/* User dropdown */}
                     <div>
-                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
-                        Recipient
-                      </label>
+                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>Recipient</label>
                       <select value={issueUserId} onChange={(e) => setIssueUserId(e.target.value)} style={selectStyle}>
                         <option value="">Select a user...</option>
                         {users.map((u) => (
-                          <option key={u.id} value={String(u.id)}>
-                            {u.full_name} ({u.email}) — {u.role}
-                          </option>
+                          <option key={u.id} value={String(u.id)}>{u.full_name} ({u.email}) — {u.role}</option>
                         ))}
                       </select>
                     </div>
-
-                    {/* Event dropdown */}
                     <div>
-                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
-                        Event
-                      </label>
+                      <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>Event</label>
                       <select value={issueEventId} onChange={(e) => setIssueEventId(e.target.value)} style={selectStyle}>
                         <option value="">Select an event...</option>
                         {events.map((ev) => (
-                          <option key={ev.id} value={String(ev.id)}>
-                            {ev.emoji} {ev.title} — {formatDate(ev.date)}
-                          </option>
+                          <option key={ev.id} value={String(ev.id)}>{ev.emoji} {ev.title} — {formatDate(ev.date)}</option>
                         ))}
                       </select>
                     </div>
                   </>
                 )}
-
                 <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
                   <AnimatedButton variant="outline" onClick={() => setShowIssueModal(false)} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>Cancel</AnimatedButton>
                   <AnimatedButton variant="primary" onClick={handleIssueSingle} disabled={issueLoading || dropLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
@@ -267,28 +270,20 @@ export default function AdminCertificates() {
                 <button onClick={() => setShowBulkModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>
-                  Issues certificates to all checked-in volunteers for the selected event.
-                </p>
-
+                <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Issues certificates to all checked-in volunteers for the selected event.</p>
                 {dropLoading ? (
                   <p style={{ color: "#9ca3af", fontSize: "0.875rem", textAlign: "center", padding: "12px 0" }}>Loading events...</p>
                 ) : (
                   <div>
-                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
-                      Event
-                    </label>
+                    <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>Event</label>
                     <select value={bulkEventId} onChange={(e) => setBulkEventId(e.target.value)} style={selectStyle}>
                       <option value="">Select an event...</option>
                       {events.map((ev) => (
-                        <option key={ev.id} value={String(ev.id)}>
-                          {ev.emoji} {ev.title} — {formatDate(ev.date)}
-                        </option>
+                        <option key={ev.id} value={String(ev.id)}>{ev.emoji} {ev.title} — {formatDate(ev.date)}</option>
                       ))}
                     </select>
                   </div>
                 )}
-
                 <div style={{ display: "flex", gap: "10px", paddingTop: "8px" }}>
                   <AnimatedButton variant="outline" onClick={() => setShowBulkModal(false)} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>Cancel</AnimatedButton>
                   <AnimatedButton variant="primary" onClick={handleBulkIssue} disabled={bulkLoading || dropLoading} style={{ flex: 1, padding: "10px", borderRadius: "10px" }}>
@@ -356,7 +351,8 @@ export default function AdminCertificates() {
               ) : certificates.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "0.875rem" }}>No certificates found.</td></tr>
               ) : certificates.map((c, i) => {
-                const isActioning = actionLoading === c.id;
+                const isActioning   = actionLoading === c.id;
+                const isDownloading = downloadingId === c.uuid;
                 return (
                   <motion.tr key={c.id} custom={i} initial="hidden" animate="visible" variants={fadeUp}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
@@ -376,12 +372,13 @@ export default function AdminCertificates() {
                     </td>
                     <td style={{ padding: "14px 16px", textAlign: "right" }}>
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: "4px" }}>
-                        <a href={`${API_BASE}/api/certificates/${c.uuid}/download/`} download style={{ textDecoration: "none" }}>
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", backgroundColor: "#f0f9f7", color: "#2e8673", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                            <Download size={13} /> Download
-                          </motion.button>
-                        </a>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={() => downloadCert(c)}
+                          disabled={isDownloading}
+                          style={{ padding: "6px 12px", borderRadius: "8px", border: "none", backgroundColor: "#f0f9f7", color: "#2e8673", cursor: isDownloading ? "not-allowed" : "pointer", fontSize: "0.8rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px", opacity: isDownloading ? 0.6 : 1 }}>
+                          <Download size={13} />
+                          {isDownloading ? "..." : "Download"}
+                        </motion.button>
                         {c.status === "issued" && (
                           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                             onClick={() => handleRevoke(c.id)} disabled={isActioning}

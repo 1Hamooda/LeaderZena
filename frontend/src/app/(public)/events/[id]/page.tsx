@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, MapPin, Users, Clock, ArrowLeft, ArrowRight, Share2, Bookmark, Check, X } from "lucide-react";
+import { Calendar, MapPin, Users, Clock, ArrowLeft, ArrowRight, Share2, Bookmark, Check, X, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "@/services/api";
 
@@ -64,7 +64,6 @@ function formatTime(start: string | null, end: string | null): string {
   return end ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
 }
 
-// Shared hero text — reused in both image and gradient variants
 function HeroContent({ event, statusCfg, bookmarked, setBookmarked }: {
   event: EventDetail;
   statusCfg: { bg: string; color: string; dot: string };
@@ -119,6 +118,7 @@ export default function EventDetailPage() {
   const [applyError,   setApplyError]   = useState("");
   const [showModal,    setShowModal]    = useState(false);
   const [motivation,   setMotivation]   = useState("");
+  const [copied,       setCopied]       = useState(false);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -132,15 +132,34 @@ export default function EventDetailPage() {
   }, [eventId]);
 
   async function handleApply() {
-    if (!event || !selectedRole) return;
+    if (!event) return;
     setApplyError(""); setApplyLoading(true);
     try {
-      await api.post(`/api/events/${event.id}/apply/`, { preferred_role: selectedRole, motivation: motivation.trim() });
+      await api.post(`/api/events/${event.id}/apply/`, {
+        preferred_role: selectedRole?.trim() || "",
+        motivation:     motivation.trim(),
+      });
       setApplied(true); setShowModal(false);
     } catch (err: any) {
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        router.push("/login"); return;
+      }
       setApplyError(err?.response?.data?.error || "Failed to submit application.");
-      if (err?.response?.status === 401 || err?.response?.status === 403) router.push("/login");
     } finally { setApplyLoading(false); }
+  }
+
+  function handleShare() {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function openApplyModal() {
+    // If not logged in, go to login
+    const token = typeof localStorage !== "undefined" && localStorage.getItem("access_token");
+    if (!token) { router.push("/login"); return; }
+    setApplyError(""); setMotivation("");
+    setShowModal(true);
   }
 
   if (loading) return (
@@ -160,6 +179,9 @@ export default function EventDetailPage() {
   const statusCfg = STATUS_CONFIG[event.status] || STATUS_CONFIG.upcoming;
   const gradient  = CATEGORY_GRADIENTS[event.category] || CATEGORY_GRADIENTS.other;
   const isClosed  = event.status === "closed" || event.status === "archived" || event.spots_remaining === 0;
+  const hasRoles  = event.roles_available && event.roles_available.length > 0;
+  // Can apply if: event is open AND (no roles defined OR a role is selected)
+  const canApply  = !isClosed && !applied && (!hasRoles || !!selectedRole);
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
@@ -176,9 +198,14 @@ export default function EventDetailPage() {
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
             </div>
             <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "20px" }}>
-              Applying for <strong style={{ color: "#2e8673" }}>{selectedRole}</strong> at <strong style={{ color: "#0d0b08" }}>{event.title}</strong>.
+              {selectedRole
+                ? <>Applying for <strong style={{ color: "#2e8673" }}>{selectedRole}</strong> at <strong style={{ color: "#0d0b08" }}>{event.title}</strong>.</>
+                : <>Applying to <strong style={{ color: "#0d0b08" }}>{event.title}</strong>.</>
+              }
             </p>
-            {applyError && <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "10px 14px", color: "#dc2626", fontSize: "0.8rem", marginBottom: "16px" }}>{applyError}</div>}
+            {applyError && (
+              <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "10px 14px", color: "#dc2626", fontSize: "0.8rem", marginBottom: "16px" }}>{applyError}</div>
+            )}
             <div style={{ marginBottom: "20px" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", display: "block", marginBottom: "6px" }}>
                 Motivation <span style={{ color: "#9ca3af", fontWeight: "400" }}>(optional)</span>
@@ -187,7 +214,7 @@ export default function EventDetailPage() {
                 placeholder="Share why you want to participate..." rows={4}
                 style={{ width: "100%", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: "10px", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
                 onFocus={(e) => (e.target.style.borderColor = "#2e8673")}
-                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")} />
+                onBlur={(e)  => (e.target.style.borderColor = "#d1d5db")} />
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={() => setShowModal(false)}
@@ -195,7 +222,7 @@ export default function EventDetailPage() {
                 Cancel
               </button>
               <button onClick={handleApply} disabled={applyLoading}
-                style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #2e8673, #469d8b)", color: "#ffffff", fontSize: "0.875rem", fontWeight: "700", cursor: "pointer" }}>
+                style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #2e8673, #469d8b)", color: "#ffffff", fontSize: "0.875rem", fontWeight: "700", cursor: applyLoading ? "not-allowed" : "pointer", opacity: applyLoading ? 0.7 : 1 }}>
                 {applyLoading ? "Submitting..." : "Submit Application"}
               </button>
             </div>
@@ -203,7 +230,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* Hero — image with overlay OR gradient+emoji */}
+      {/* Hero */}
       {event.image_url ? (
         <div style={{ position: "relative", height: "360px", overflow: "hidden" }}>
           <img src={event.image_url} alt={event.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -252,6 +279,7 @@ export default function EventDetailPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "28px", alignItems: "start" }}>
 
+          {/* Left — description + highlights */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <motion.div custom={1} initial="hidden" animate="visible" variants={fadeUp}
               style={{ backgroundColor: "#ffffff", borderRadius: "20px", padding: "28px", border: "1px solid #f0f0f0" }}>
@@ -277,9 +305,10 @@ export default function EventDetailPage() {
             )}
           </div>
 
-          {/* Apply card */}
+          {/* Right — Apply card */}
           <motion.div custom={3} initial="hidden" animate="visible" variants={fadeUp}
             style={{ position: "sticky", top: "24px", backgroundColor: "#ffffff", borderRadius: "20px", padding: "24px", border: "1px solid #f0f0f0", boxShadow: "0 8px 32px rgba(46,134,115,0.08)" }}>
+
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "20px" }}>
               <Users size={16} style={{ color: "#2e8673" }} />
               <span style={{ fontSize: "0.875rem", color: "#6b7280" }}>
@@ -287,14 +316,15 @@ export default function EventDetailPage() {
               </span>
             </div>
 
-            {event.roles_available && event.roles_available.length > 0 && (
+            {/* Role selector — only shown when roles exist */}
+            {hasRoles && !applied && !isClosed && (
               <>
                 <h3 style={{ fontSize: "1rem", fontWeight: "800", color: "#0d0b08", marginBottom: "14px" }}>Choose a Role</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
                   {event.roles_available.map((role) => (
                     <motion.button key={role} whileHover={{ x: 3 }} whileTap={{ scale: 0.98 }}
-                      onClick={() => !isClosed && !applied && setSelectedRole(role)}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: "12px", cursor: isClosed || applied ? "default" : "pointer", border: selectedRole === role ? "1.5px solid #2e8673" : "1.5px solid #e5e7eb", backgroundColor: selectedRole === role ? "#f0f9f7" : "#ffffff", color: selectedRole === role ? "#2e8673" : "#4b5563", fontSize: "0.875rem", fontWeight: selectedRole === role ? "700" : "500", transition: "all 0.2s" }}>
+                      onClick={() => setSelectedRole(role)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: "12px", cursor: "pointer", border: selectedRole === role ? "1.5px solid #2e8673" : "1.5px solid #e5e7eb", backgroundColor: selectedRole === role ? "#f0f9f7" : "#ffffff", color: selectedRole === role ? "#2e8673" : "#4b5563", fontSize: "0.875rem", fontWeight: selectedRole === role ? "700" : "500", transition: "all 0.2s" }}>
                       {role}
                       <AnimatePresence>
                         {selectedRole === role && (
@@ -310,6 +340,7 @@ export default function EventDetailPage() {
               </>
             )}
 
+            {/* Apply / status button */}
             <AnimatePresence mode="wait">
               {applied ? (
                 <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
@@ -331,23 +362,28 @@ export default function EventDetailPage() {
               ) : (
                 <motion.div key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <motion.button
-                    whileHover={selectedRole ? { scale: 1.02, boxShadow: "0 8px 24px rgba(46,134,115,0.25)" } : {}}
-                    whileTap={selectedRole ? { scale: 0.97 } : {}}
-                    onClick={() => selectedRole && setShowModal(true)}
-                    style={{ width: "100%", padding: "14px", borderRadius: "14px", border: "none", background: selectedRole ? "linear-gradient(135deg, #2e8673, #469d8b)" : "#f3f4f6", color: selectedRole ? "#ffffff" : "#9ca3af", fontSize: "0.95rem", fontWeight: "700", cursor: selectedRole ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.2s" }}>
+                    whileHover={canApply ? { scale: 1.02, boxShadow: "0 8px 24px rgba(46,134,115,0.25)" } : {}}
+                    whileTap={canApply ? { scale: 0.97 } : {}}
+                    onClick={canApply ? openApplyModal : undefined}
+                    style={{ width: "100%", padding: "14px", borderRadius: "14px", border: "none", background: canApply ? "linear-gradient(135deg, #2e8673, #469d8b)" : "#f3f4f6", color: canApply ? "#ffffff" : "#9ca3af", fontSize: "0.95rem", fontWeight: "700", cursor: canApply ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.2s" }}>
                     Apply Now <ArrowRight size={15} />
                   </motion.button>
-                  {!selectedRole && event.roles_available && event.roles_available.length > 0 && (
-                    <p style={{ fontSize: "0.75rem", color: "#9ca3af", textAlign: "center", marginTop: "8px" }}>Select a role to continue</p>
+                  {hasRoles && !selectedRole && (
+                    <p style={{ fontSize: "0.75rem", color: "#9ca3af", textAlign: "center", marginTop: "8px" }}>
+                      Select a role to continue
+                    </p>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <motion.button whileHover={{ backgroundColor: "#f0f9f7" }} whileTap={{ scale: 0.97 }}
-              onClick={() => navigator.clipboard.writeText(window.location.href)}
-              style={{ width: "100%", marginTop: "12px", padding: "10px", borderRadius: "12px", border: "1px solid #e5e7eb", backgroundColor: "#ffffff", color: "#6b7280", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", transition: "background-color 0.2s" }}>
-              <Share2 size={14} /> Share Event
+            {/* Share button — copies link and shows feedback */}
+            <motion.button
+              whileHover={{ backgroundColor: copied ? "#dcfce7" : "#f0f9f7" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleShare}
+              style={{ width: "100%", marginTop: "12px", padding: "10px", borderRadius: "12px", border: `1px solid ${copied ? "#86efac" : "#e5e7eb"}`, backgroundColor: copied ? "#f0fdf4" : "#ffffff", color: copied ? "#15803d" : "#6b7280", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", transition: "all 0.2s" }}>
+              {copied ? <><Check size={14} /> Copied!</> : <><Share2 size={14} /> Share Event</>}
             </motion.button>
           </motion.div>
         </div>

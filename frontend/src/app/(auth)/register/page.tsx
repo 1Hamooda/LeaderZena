@@ -68,30 +68,9 @@ export default function RegisterPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            style={{
-              width: "100%",
-              maxWidth: "440px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #f0f0f0",
-              borderRadius: "20px",
-              padding: "48px 40px",
-              textAlign: "center",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-            }}
+            style={{ width: "100%", maxWidth: "440px", backgroundColor: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "20px", padding: "48px 40px", textAlign: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}
           >
-            <div style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "50%",
-              backgroundColor: "#f0f9f7",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 24px",
-              fontSize: "1.75rem",
-              color: "#2e8673",
-              fontWeight: "700",
-            }}>
+            <div style={{ width: "64px", height: "64px", borderRadius: "50%", backgroundColor: "#f0f9f7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: "1.75rem", color: "#2e8673", fontWeight: "700" }}>
               ✓
             </div>
             <h2 style={{ fontSize: "1.375rem", fontWeight: "800", color: "#0d0b08", margin: "0 0 12px" }}>
@@ -100,19 +79,8 @@ export default function RegisterPage() {
             <p style={{ fontSize: "0.9rem", color: "#6b7280", lineHeight: "1.7", margin: "0 0 32px" }}>
               Your member account is pending admin approval. You will be able to log in once an admin reviews your application.
             </p>
-            <Link
-              href="/login"
-              style={{
-                display: "inline-block",
-                padding: "12px 32px",
-                backgroundColor: "#2e8673",
-                color: "#ffffff",
-                borderRadius: "12px",
-                fontWeight: "600",
-                fontSize: "0.9rem",
-                textDecoration: "none",
-              }}
-            >
+            <Link href="/login"
+              style={{ display: "inline-block", padding: "12px 32px", backgroundColor: "#2e8673", color: "#ffffff", borderRadius: "12px", fontWeight: "600", fontSize: "0.9rem", textDecoration: "none" }}>
               Back to Login
             </Link>
           </motion.div>
@@ -121,22 +89,13 @@ export default function RegisterPage() {
     );
   }
 
-  // Registration form
   return (
     <PageWrapper>
       <div style={{ display: "flex", minHeight: "100vh" }}>
 
         {/* Left Side */}
         <div
-          style={{
-            flex: 1,
-            background: "linear-gradient(135deg, #2e8673 0%, #211f21 100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "64px",
-          }}
+          style={{ flex: 1, background: "linear-gradient(135deg, #2e8673 0%, #211f21 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px" }}
           className="hidden md:flex"
         >
           <Player autoplay loop src="/animation.json" style={{ width: "380px", height: "380px" }} />
@@ -149,26 +108,14 @@ export default function RegisterPage() {
         </div>
 
         {/* Right Side */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "64px 80px",
-            backgroundColor: "#ffffff",
-            overflowY: "auto",
-          }}
-        >
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 80px", backgroundColor: "#ffffff", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: "420px" }}>
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              style={{ textAlign: "center", marginBottom: "40px" }}
-            >
-              <Image src="/logo.png" alt="MENA Club" width={56} height={56} quality={100} unoptimized className="h-14 w-auto mx-auto mb-4" />
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
+              style={{ textAlign: "center", marginBottom: "40px" }}>
+              <Link href="/" style={{ display: "inline-block", marginBottom: "16px" }}>
+                <Image src="/logo.png" alt="MENA Club" width={56} height={56} quality={100} unoptimized className="h-14 w-auto mx-auto" />
+              </Link>
               <h1 style={{ fontSize: "1.75rem", fontWeight: "800", marginBottom: "8px" }}>
                 Join <span style={{ color: "#2e8673" }}>MENA</span> Club
               </h1>
@@ -176,64 +123,26 @@ export default function RegisterPage() {
             </motion.div>
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "10px",
-                  padding: "12px 16px",
-                  marginBottom: "20px",
-                  fontSize: "0.875rem",
-                  color: "#dc2626",
-                }}
-              >
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", fontSize: "0.875rem", color: "#dc2626" }}>
                 {error}
               </motion.div>
             )}
 
-            <motion.form
-              onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
-              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-            >
+            <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }}
+              style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <AnimatedInput
-                  label="First Name"
-                  placeholder="Ahmad"
-                  value={firstName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-                  required
-                />
-                <AnimatedInput
-                  label="Last Name"
-                  placeholder="Tarek"
-                  value={lastName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-                  required
-                />
+                <AnimatedInput label="First Name" placeholder="Ahmad" value={firstName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)} required />
+                <AnimatedInput label="Last Name" placeholder="Tarek" value={lastName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)} required />
               </div>
 
-              <AnimatedInput
-                label="Email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
-              />
+              <AnimatedInput label="Email" type="email" placeholder="you@example.com" value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} required />
 
-              <AnimatedInput
-                label="Password"
-                type="password"
-                placeholder="password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                required
-              />
+              <AnimatedInput label="Password" type="password" placeholder="password" value={password}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} required />
 
               {/* Role Selector */}
               <div>
@@ -242,24 +151,10 @@ export default function RegisterPage() {
                 </label>
                 <div style={{ display: "flex", gap: "12px" }}>
                   {(["member", "volunteer"] as const).map((r) => (
-                    <motion.button
-                      key={r}
-                      type="button"
-                      onClick={() => setRole(r)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <motion.button key={r} type="button" onClick={() => setRole(r)}
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                       transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                      style={{
-                        flex: 1,
-                        padding: "16px",
-                        textAlign: "center",
-                        borderRadius: "12px",
-                        cursor: "pointer",
-                        border: role === r ? "2px solid #2e8673" : "2px solid #e5e7eb",
-                        backgroundColor: role === r ? "#f0f9f7" : "#ffffff",
-                        transition: "border 0.2s, background-color 0.2s",
-                      }}
-                    >
+                      style={{ flex: 1, padding: "16px", textAlign: "center", borderRadius: "12px", cursor: "pointer", border: role === r ? "2px solid #2e8673" : "2px solid #e5e7eb", backgroundColor: role === r ? "#f0f9f7" : "#ffffff", transition: "border 0.2s, background-color 0.2s" }}>
                       <p style={{ fontWeight: "600", fontSize: "0.875rem", marginBottom: "2px", color: role === r ? "#2e8673" : "#0d0b08" }}>
                         {r.charAt(0).toUpperCase() + r.slice(1)}
                       </p>
@@ -271,40 +166,21 @@ export default function RegisterPage() {
                 </div>
 
                 {role === "member" && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    style={{
-                      marginTop: "10px",
-                      fontSize: "0.75rem",
-                      color: "#9ca3af",
-                      backgroundColor: "#f9fafb",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                    }}
-                  >
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    style={{ marginTop: "10px", fontSize: "0.75rem", color: "#9ca3af", backgroundColor: "#f9fafb", padding: "8px 12px", borderRadius: "8px" }}>
                     Member accounts require admin approval before you can log in.
                   </motion.p>
                 )}
               </div>
 
-              <AnimatedButton
-                variant="primary"
-                fullWidth
-                type="submit"
-                disabled={loading}
-                style={{ padding: "14px", fontSize: "1rem", marginTop: "4px" }}
-              >
+              <AnimatedButton variant="primary" fullWidth type="submit" disabled={loading}
+                style={{ padding: "14px", fontSize: "1rem", marginTop: "4px" }}>
                 {loading ? "Creating account..." : "Create Account"}
               </AnimatedButton>
             </motion.form>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35, duration: 0.4 }}
-              style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280", marginTop: "28px" }}
-            >
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 0.4 }}
+              style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280", marginTop: "28px" }}>
               Already have an account?{" "}
               <Link href="/login" style={{ color: "#2e8673", fontWeight: "500" }}>Sign in</Link>
             </motion.p>

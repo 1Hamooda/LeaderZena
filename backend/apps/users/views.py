@@ -13,7 +13,7 @@ from .services     import get_tokens_for_user, authenticate_user
 from .permissions  import IsAdmin
 
 
-# Auth endpoints
+# ── Auth endpoints ─────────────────────────────────────────────────
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -21,16 +21,15 @@ def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
-        role = user.role
-        if role == "member":
+        if user.role == "member":
             return Response({
                 "message": "Registration submitted. Your account is pending admin approval.",
-                "user":    UserSerializer(user).data,
+                "user":    UserSerializer(user, context={"request": request}).data,
             }, status=status.HTTP_201_CREATED)
         tokens = get_tokens_for_user(user)
         return Response({
             "message": "Account created successfully.",
-            "user":    UserSerializer(user).data,
+            "user":    UserSerializer(user, context={"request": request}).data,
             "tokens":  tokens,
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -51,7 +50,11 @@ def login(request):
             return Response({"error": "Your account is pending admin approval."}, status=status.HTTP_403_FORBIDDEN)
         return Response({"error": "Account is disabled."}, status=status.HTTP_403_FORBIDDEN)
     tokens = get_tokens_for_user(user)
-    return Response({"message": "Login successful.", "user": UserSerializer(user).data, "tokens": tokens}, status=status.HTTP_200_OK)
+    return Response({
+        "message": "Login successful.",
+        "user":    UserSerializer(user, context={"request": request}).data,
+        "tokens":  tokens,
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -68,16 +71,29 @@ def logout(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
-    return Response(UserSerializer(request.user).data)
+    return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def update_profile(request):
-    serializer = UpdateProfileSerializer(request.user, data=request.data, partial=True)
+    """
+    PATCH /api/auth/profile/
+    Accepts multipart/form-data so avatar uploads work alongside text fields.
+    Send avatar as a file field named 'avatar'.
+    """
+    serializer = UpdateProfileSerializer(
+        request.user,
+        data=request.data,
+        partial=True,
+        context={"request": request},
+    )
     if serializer.is_valid():
         serializer.save()
-        return Response({"message": "Profile updated.", "user": UserSerializer(request.user).data})
+        return Response({
+            "message": "Profile updated.",
+            "user":    UserSerializer(request.user, context={"request": request}).data,
+        })
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -91,7 +107,7 @@ def change_password(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Admin endpoints
+# ── Admin endpoints ────────────────────────────────────────────────
 
 @api_view(["GET"])
 @permission_classes([IsAdmin])
@@ -107,9 +123,13 @@ def admin_list_users(request):
     elif active == "active":
         queryset = queryset.filter(is_active=True)
     if search:
-        queryset = queryset.filter(email__icontains=search) | queryset.filter(first_name__icontains=search) | queryset.filter(last_name__icontains=search)
-    serializer = AdminUserSerializer(queryset, many=True)
-    return Response({"count": queryset.count(), "results": serializer.data})
+        queryset = queryset.filter(email__icontains=search) | \
+                   queryset.filter(first_name__icontains=search) | \
+                   queryset.filter(last_name__icontains=search)
+    return Response({
+        "count":   queryset.count(),
+        "results": AdminUserSerializer(queryset, many=True, context={"request": request}).data,
+    })
 
 
 @api_view(["GET"])
@@ -119,7 +139,7 @@ def admin_get_user(request, user_id):
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-    return Response(AdminUserSerializer(user).data)
+    return Response(AdminUserSerializer(user, context={"request": request}).data)
 
 
 @api_view(["POST"])
@@ -135,7 +155,7 @@ def admin_approve_user(request, user_id):
     user.save()
     from apps.notifications.services import notify_member_approved
     notify_member_approved(user)
-    return Response({"message": f"{user.full_name} has been approved.", "user": AdminUserSerializer(user).data})
+    return Response({"message": f"{user.full_name} has been approved.", "user": AdminUserSerializer(user, context={"request": request}).data})
 
 
 @api_view(["POST"])
@@ -149,7 +169,7 @@ def admin_reject_user(request, user_id):
     user.save()
     from apps.notifications.services import notify_member_rejected
     notify_member_rejected(user)
-    return Response({"message": f"{user.full_name} has been rejected/deactivated.", "user": AdminUserSerializer(user).data})
+    return Response({"message": f"{user.full_name} has been rejected/deactivated.", "user": AdminUserSerializer(user, context={"request": request}).data})
 
 
 @api_view(["POST"])
@@ -163,5 +183,5 @@ def admin_change_role(request, user_id):
     if serializer.is_valid():
         user.role = serializer.validated_data["role"]
         user.save()
-        return Response({"message": f"{user.full_name}'s role changed to {user.role}.", "user": AdminUserSerializer(user).data})
+        return Response({"message": f"{user.full_name}'s role changed to {user.role}.", "user": AdminUserSerializer(user, context={"request": request}).data})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

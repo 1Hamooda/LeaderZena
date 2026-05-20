@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Mail, MapPin, Github, Linkedin, Twitter } from "lucide-react";
+import { Mail, MapPin, Github, Linkedin, Twitter, Instagram } from "lucide-react";
 
 export default function Footer() {
   const containerVariants = {
@@ -36,16 +36,15 @@ export default function Footer() {
           {/* Brand Section */}
           <motion.div variants={itemVariants} className="space-y-4">
             <h3 className="text-2xl font-black tracking-tight">
-              <span className="text-blue-500">MENA</span>
+              <span className="text-[#2e8673]">MENA</span>
               <span className="text-white"> Club</span>
             </h3>
             <p className="text-sm leading-relaxed text-gray-500">
               Building a unified platform for youth to lead through volunteering and professional growth.
             </p>
             <div className="flex space-x-4 pt-2">
-              <SocialIcon icon={<Github size={18} />} href="#" />
-              <SocialIcon icon={<Linkedin size={18} />} href="#" />
-              <SocialIcon icon={<Twitter size={18} />} href="#" />
+              <SocialIcon icon={<Instagram size={18} />} href="https://www.instagram.com/mena.club/" />
+              <SocialIcon icon={<Linkedin size={18} />} href="https://www.linkedin.com/company/menaclub/" />
             </div>
           </motion.div>
 
