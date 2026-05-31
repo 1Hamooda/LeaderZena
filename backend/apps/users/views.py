@@ -89,11 +89,8 @@ def update_profile(request):
         context={"request": request},
     )
     if serializer.is_valid():
-        serializer.save()
-        return Response({
-            "message": "Profile updated.",
-            "user":    UserSerializer(request.user, context={"request": request}).data,
-        })
+        updated = serializer.save()
+        return Response({"message": "Profile updated.", "user": UserSerializer(updated, context={"request": request}).data})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -185,3 +182,4 @@ def admin_change_role(request, user_id):
         user.save()
         return Response({"message": f"{user.full_name}'s role changed to {user.role}.", "user": AdminUserSerializer(user, context={"request": request}).data})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+      
