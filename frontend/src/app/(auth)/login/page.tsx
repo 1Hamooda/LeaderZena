@@ -24,10 +24,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { user } = await login({ email, password });
-      if (user.role === "admin")          router.push("/admin/dashboard");
-      else if (user.role === "volunteer") router.push("/volunteer/dashboard");
-      else                                router.push("/member/dashboard");
+      await login({ email, password });
+      router.push("/");
     } catch (err: any) {
       const msg = err?.response?.data?.error || "Something went wrong. Please try again.";
       setError(msg);
@@ -42,15 +40,7 @@ export default function LoginPage() {
 
         {/* Left Side */}
         <div
-          style={{
-            flex: 1,
-            background: "linear-gradient(135deg, #2e8673 0%, #211f21 100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "64px",
-          }}
+          style={{ flex: 1, background: "linear-gradient(135deg, #2e8673 0%, #211f21 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px" }}
           className="hidden md:flex"
         >
           <Player autoplay loop src="/animation.json" style={{ width: "380px", height: "380px" }} />
@@ -63,70 +53,31 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "64px 80px",
-            backgroundColor: "#ffffff",
-          }}
-        >
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 80px", backgroundColor: "#ffffff" }}>
           <div style={{ width: "100%", maxWidth: "420px" }}>
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              style={{ textAlign: "center", marginBottom: "40px" }}
-            >
-              <Image src="/logo.png" alt="MENA Club" width={56} height={56} quality={100} unoptimized className="h-14 w-auto mx-auto mb-4" />
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
+              style={{ textAlign: "center", marginBottom: "40px" }}>
+              <Link href="/" style={{ display: "inline-block", marginBottom: "16px" }}>
+                <Image src="/logo.png" alt="MENA Club" width={56} height={56} quality={100} unoptimized className="h-14 w-auto mx-auto" />
+              </Link>
               <h1 style={{ fontSize: "1.75rem", fontWeight: "800", marginBottom: "8px" }}>Welcome Back</h1>
               <p style={{ fontSize: "0.875rem", color: "#6b7280" }}>Sign in to your account</p>
             </motion.div>
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "10px",
-                  padding: "12px 16px",
-                  marginBottom: "20px",
-                  fontSize: "0.875rem",
-                  color: "#dc2626",
-                }}
-              >
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", fontSize: "0.875rem", color: "#dc2626" }}>
                 {error}
               </motion.div>
             )}
 
-            <motion.form
-              onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
-              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-            >
-              <AnimatedInput
-                label="Email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
-              />
-              <AnimatedInput
-                label="Password"
-                type="password"
-                placeholder="password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                required
-              />
+            <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }}
+              style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <AnimatedInput label="Email" type="email" placeholder="you@example.com" value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} required />
+              <AnimatedInput label="Password" type="password" placeholder="password" value={password}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} required />
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.875rem" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", color: "#6b7280" }}>
@@ -137,26 +88,17 @@ export default function LoginPage() {
                 </motion.a>
               </div>
 
-              <AnimatedButton
-                variant="primary"
-                fullWidth
-                type="submit"
-                disabled={loading}
-                style={{ padding: "14px", fontSize: "1rem", marginTop: "4px" }}
-              >
+              <AnimatedButton variant="primary" fullWidth type="submit" disabled={loading}
+                style={{ padding: "14px", fontSize: "1rem", marginTop: "4px" }}>
                 {loading ? "Signing in..." : "Sign In"}
               </AnimatedButton>
             </motion.form>
 
-            <motion.p
-  initial={{ opacity: 0 }}
-  animate={{ opacity: 1 }}
-  transition={{ delay: 0.35, duration: 0.4 }}
-  style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280", marginTop: "28px" }}
->
-  Already have an account?{" "}
-  <Link href="/register" style={{ color: "#2e8673", fontWeight: "500" }}>Sign up</Link>
-</motion.p>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 0.4 }}
+              style={{ textAlign: "center", fontSize: "0.875rem", color: "#6b7280", marginTop: "28px" }}>
+              Don&apos;t have an account?{" "}
+              <Link href="/register" style={{ color: "#2e8673", fontWeight: "500" }}>Sign up</Link>
+            </motion.p>
 
           </div>
         </div>

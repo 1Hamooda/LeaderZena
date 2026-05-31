@@ -238,7 +238,38 @@ def download_certificate(request, uuid):
 
     if cert.status == "revoked":
         return Response({"error": "This certificate has been revoked."}, status=status.HTTP_410_GONE)
-    
+
+    # Build dynamic data
+    volunteer_name = cert.user.full_name
+    event_name     = cert.event.title
+    event_date     = cert.issued_at.strftime("%B %d, %Y")
+
+    # Generate HTML and convert to PDF
+    try:
+        from weasyprint import HTML as WeasyprintHTML
+        html_str = _build_certificate_html(
+            name        = volunteer_name,
+            event_name  = event_name,
+            date        = event_date,
+            owner_name  = "Zena Abu Gaith",
+            owner_title = "OWNER OF MENA",
+        )
+        pdf_bytes = WeasyprintHTML(string=html_str).write_pdf()
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to generate certificate: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    # Build a clean filename
+    safe_name  = volunteer_name.replace(" ", "_")
+    safe_event = event_name.replace(" ", "_")[:30]
+    filename   = f"MENA_Certificate_{safe_name}_{safe_event}.pdf"
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -270,37 +301,6 @@ def view_certificate(request, uuid):
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = "inline"
-    return response
-
-    # Build dynamic data
-    volunteer_name = cert.user.full_name
-    event_name     = cert.event.title
-    event_date     = cert.issued_at.strftime("%B %d, %Y")
-
-    # Generate HTML and convert to PDF
-    try:
-        from weasyprint import HTML as WeasyprintHTML
-        html_str = _build_certificate_html(
-            name        = volunteer_name,
-            event_name  = event_name,
-            date        = event_date,
-            owner_name  = "Zena Abu Gaith",
-            owner_title = "OWNER OF MENA",
-        )
-        pdf_bytes = WeasyprintHTML(string=html_str).write_pdf()
-    except Exception as e:
-        return Response(
-            {"error": f"Failed to generate certificate: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-    # Build a clean filename
-    safe_name  = volunteer_name.replace(" ", "_")
-    safe_event = event_name.replace(" ", "_")[:30]
-    filename   = f"MENA_Certificate_{safe_name}_{safe_event}.pdf"
-
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"' 
     return response
 
 

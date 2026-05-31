@@ -10,24 +10,108 @@ from .serializers               import PointTransactionSerializer, AwardPointsSe
 from .services                  import get_points_summary, award_points
 
 
-# ── Member endpoints ───────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────
+
+LEVEL_THRESHOLDS = [
+    (3000, "Diamond"),
+    (2000, "Platinum"),
+    (1000, "Gold"),
+    (500,  "Silver"),
+    (0,    "Bronze"),
+]
+
+def get_level(points: int) -> str:
+    for threshold, label in LEVEL_THRESHOLDS:
+        if points >= threshold:
+            return label
+    return "Bronze"
+
+def get_next_milestone(points: int) -> int:
+    thresholds_asc = sorted(t for t, _ in LEVEL_THRESHOLDS)
+    for t in thresholds_asc:
+        if points < t:
+            return t
+    return thresholds_asc[-1]
+
+def build_leaderboard(limit: int = 50):
+    from django.db.models import Sum, Count
+
+    users = (
+        User.objects
+        .filter(is_active=True)
+        .exclude(role="admin")
+        .annotate(
+            total_points    = Sum("point_transactions__points"),
+            events_attended = Count("checkins", distinct=True),
+        )
+        .order_by("-total_points")[:limit]
+    )
+
+    results = []
+    for i, u in enumerate(users):
+        pts = u.total_points or 0
+        results.append({
+            "rank":            i + 1,
+            "user_id":         u.id,
+            "name":            u.full_name,
+            "email":           u.email,
+            "total_points":    pts,
+            "level":           get_level(pts),
+            "events_attended": u.events_attended or 0,
+        })
+    return results
+
+
+# ── Member / Volunteer endpoints ───────────────────────────────────
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_points(request):
-    """
-    GET /api/points/
-    Returns the logged-in member's points total, breakdown, and full history.
-    FR-M2.
-    """
+    """GET /api/points/ — logged-in user's points summary + history."""
     summary      = get_points_summary(request.user)
     transactions = PointTransaction.objects.filter(user=request.user)
     serializer   = PointTransactionSerializer(transactions, many=True)
+    return Response({
+        "total":     summary["total"],
+        "breakdown": summary["breakdown"],
+        "history":   serializer.data,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def leaderboard(request):
+    """
+    GET /api/points/leaderboard/
+    Accessible to any authenticated user.
+    Returns top users ranked by total points with level + events_attended.
+    """
+    limit   = min(int(request.query_params.get("limit", 50)), 100)
+    results = build_leaderboard(limit=limit)
+    return Response({"leaderboard": results})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_rank(request):
+    """
+    GET /api/points/my-rank/
+    Returns the logged-in user's rank, level, points, and progress to next milestone.
+    """
+    full       = build_leaderboard(limit=1000)
+    user_entry = next((e for e in full if e["user_id"] == request.user.id), None)
+
+    pts  = user_entry["total_points"] if user_entry else 0
+    rank = user_entry["rank"]         if user_entry else len(full) + 1
 
     return Response({
-        "total":    summary["total"],
-        "breakdown": summary["breakdown"],
-        "history":  serializer.data,
+        "rank":            rank,
+        "total_points":    pts,
+        "level":           get_level(pts),
+        "next_milestone":  get_next_milestone(pts),
+        "points_to_next":  max(get_next_milestone(pts) - pts, 0),
+        "events_attended": request.user.checkins.count(),
+        "total_users":     len(full),
     })
 
 
@@ -36,11 +120,7 @@ def my_points(request):
 @api_view(["GET"])
 @permission_classes([IsAdmin])
 def admin_user_points(request, user_id):
-    """
-    GET /api/points/admin/users/<user_id>/
-    Admin views any user's points total and history.
-    FR-A9.
-    """
+    """GET /api/points/admin/users/<user_id>/ — admin views any user's history."""
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -61,11 +141,7 @@ def admin_user_points(request, user_id):
 @api_view(["POST"])
 @permission_classes([IsAdmin])
 def admin_award_points(request):
-    """
-    POST /api/points/admin/award/
-    Admin manually awards or deducts points for a user.
-    Body: { user_id, points, reason, note (optional) }
-    """
+    """POST /api/points/admin/award/ — admin awards or deducts points."""
     serializer = AwardPointsSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -93,33 +169,7 @@ def admin_award_points(request):
 @api_view(["GET"])
 @permission_classes([IsAdmin])
 def admin_points_leaderboard(request):
-    """
-    GET /api/points/admin/leaderboard/
-    Returns top members ranked by total points.
-    Useful for analytics (FR-A9).
-    Query params:
-      ?limit=10  (default 10)
-    """
-    from django.db.models import Sum
-
-    limit = int(request.query_params.get("limit", 10))
-
-    leaderboard = (
-        User.objects
-        .filter(role="member", is_active=True)
-        .annotate(total_points=Sum("point_transactions__points"))
-        .order_by("-total_points")[:limit]
-    )
-
-    results = [
-        {
-            "rank":         i + 1,
-            "user_id":      u.id,
-            "name":         u.full_name,
-            "email":        u.email,
-            "total_points": u.total_points or 0,
-        }
-        for i, u in enumerate(leaderboard)
-    ]
-
+    """GET /api/points/admin/leaderboard/ — kept for admin dashboard compatibility."""
+    limit   = min(int(request.query_params.get("limit", 10)), 100)
+    results = build_leaderboard(limit=limit)
     return Response({"leaderboard": results})
