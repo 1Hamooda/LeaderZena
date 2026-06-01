@@ -43,7 +43,7 @@ export default function AdminProfile() {
         setCity(userData.city            || "");
         setCountry(userData.country      || "");
         setBio(userData.bio              || "");
-        if (userData.avatar) setAvatarPreview(userData.avatar);
+        if (userData.avatar_url) setAvatarPreview(userData.avatar_url);
       } catch {
         setError("Failed to load profile. Please refresh.");
       } finally {
@@ -83,7 +83,7 @@ export default function AdminProfile() {
       });
 
       setUser(data.user);
-      if (data.user.avatar) setAvatarPreview(data.user.avatar);
+      if (data.user.avatar_url) setAvatarPreview(data.user.avatar_url);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch {
@@ -102,7 +102,7 @@ export default function AdminProfile() {
     setCountry(user.country      || "");
     setBio(user.bio              || "");
     setAvatarFile(null);
-    if (user.avatar) setAvatarPreview(user.avatar);
+    if (user.avatar_url) setAvatarPreview(user.avatar_url);
     else setAvatarPreview(null);
   }
 

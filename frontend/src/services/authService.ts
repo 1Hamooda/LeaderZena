@@ -16,6 +16,7 @@ export interface User {
   experience:  string;
   skills:      string[];
   avatar:      string | null;
+  avatar_url:  string | null;
   is_active:   boolean;
   date_joined: string;
 }

@@ -68,10 +68,10 @@ function getInitials(user: User | null): string {
 }
 
 function Avatar({ user, size }: { user: User | null; size: number }) {
-  if (user?.avatar) {
+  if (user?.avatar_url) {
     return (
       <img
-        src={user.avatar}
+        src={user.avatar_url}
         alt="avatar"
         style={{ width: `${size}px`, height: `${size}px`, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
       />

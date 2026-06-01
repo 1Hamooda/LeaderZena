@@ -10,6 +10,7 @@ import AnimatedButton from "@/components/ui/AnimatedButton";
 import { getMe, logout } from "@/services/authService";
 
 interface UserInfo {
+  avatar_url: string | null;
   first_name: string;
   last_name:  string;
   email:      string;
@@ -128,7 +129,7 @@ export default function Navbar() {
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
               >
                 <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ color: "#ffffff", fontSize: "0.75rem", fontWeight: "700" }}>{getInitials(user)}</span>
+                  {user.avatar_url ? <img src={user.avatar_url} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : <span style={{ color: "#ffffff", fontSize: "0.75rem", fontWeight: "700" }}>{getInitials(user)}</span>}
                 </div>
                 <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0d0b08", maxWidth: "100px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user.first_name}
@@ -148,7 +149,7 @@ export default function Navbar() {
                     {/* User info */}
                     <div style={{ padding: "14px 16px", borderBottom: "1px solid #f5f5f5", display: "flex", alignItems: "center", gap: "10px" }}>
                       <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #2e8673, #469d8b)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <span style={{ color: "#ffffff", fontSize: "0.8rem", fontWeight: "700" }}>{getInitials(user)}</span>
+                        {user.avatar_url ? <img src={user.avatar_url} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : <span style={{ color: "#ffffff", fontSize: "0.8rem", fontWeight: "700" }}>{getInitials(user)}</span>}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0d0b08", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.first_name} {user.last_name}</p>

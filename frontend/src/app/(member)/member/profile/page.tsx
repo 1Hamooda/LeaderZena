@@ -56,7 +56,7 @@ export default function MemberProfile() {
         setBio(data.bio               || "");
         setExperience(data.experience || "");
         setSelectedSkills(data.skills || []);
-        if (data.avatar) setAvatarPreview(data.avatar);
+        if (data.avatar_url) setAvatarPreview(data.avatar_url);
         try {
           const cv = await getMyCv();
           if (cv?.file_url) { setUploadedFile("CV already uploaded ✓"); setHasExistingCv(true); }
@@ -108,7 +108,7 @@ export default function MemberProfile() {
       });
 
       setUser(data.user);
-      if (data.user.avatar) setAvatarPreview(data.user.avatar);
+      if (data.user.avatar_url) setAvatarPreview(data.user.avatar_url);
       if (cvFile) { await uploadCv(cvFile); setCvFile(null); setHasExistingCv(true); }
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -140,7 +140,7 @@ export default function MemberProfile() {
     setExperience(user.experience || "");
     setSelectedSkills(user.skills || []);
     setAvatarFile(null);
-    if (user.avatar) setAvatarPreview(user.avatar);
+    if (user.avatar_url) setAvatarPreview(user.avatar_url);
     else setAvatarPreview(null);
     setCvFile(null);
   }

@@ -52,7 +52,7 @@ export default function VolunteerProfile() {
         setBio(userData.bio              || "");
         setSelectedSkills(userData.skills || []);
         setCertCount(certsData.data.length || 0);
-        if (userData.avatar) setAvatarPreview(userData.avatar);
+        if (userData.avatar_url) setAvatarPreview(userData.avatar_url);
       } catch {
         setError("Failed to load profile. Please refresh.");
       } finally {
@@ -98,7 +98,7 @@ export default function VolunteerProfile() {
       });
 
       setUser(data.user);
-      if (data.user.avatar) setAvatarPreview(data.user.avatar);
+      if (data.user.avatar_url) setAvatarPreview(data.user.avatar_url);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch {
@@ -118,7 +118,7 @@ export default function VolunteerProfile() {
     setBio(user.bio              || "");
     setSelectedSkills(user.skills || []);
     setAvatarFile(null);
-    if (user.avatar) setAvatarPreview(user.avatar);
+    if (user.avatar_url) setAvatarPreview(user.avatar_url);
     else setAvatarPreview(null);
   }
 
